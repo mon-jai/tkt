@@ -4,13 +4,13 @@ import '../models/announcement_model.dart';
 
 class AnnouncementService {
   // 台科大公告頁面網址 (中文版)
-  static const String _ntustNewsPageUrl = 'https://www.ntust.edu.tw/p/403-1000-168-1.php?Lang=zh-tw';
-  // 台科大網站的基礎網址
+  static const String _baseUrl = 'https://www.ntust.edu.tw/p/403-1000-168-{page}.php?Lang=zh-tw';
   static const String _ntustBaseUrl = 'https://www.ntust.edu.tw';
 
-  Future<List<Announcement>> fetchAnnouncements() async {
+  Future<List<Announcement>> fetchAnnouncements({int page = 1}) async {
     try {
-      final response = await http.get(Uri.parse(_ntustNewsPageUrl));
+      final url = _baseUrl.replaceAll('{page}', page.toString());
+      final response = await http.get(Uri.parse(url));
 
       if (response.statusCode != 200) {
         throw Exception('無法連接到台科大網站，狀態碼: ${response.statusCode}');

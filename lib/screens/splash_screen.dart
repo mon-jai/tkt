@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
-import 'package:tkt/screens/home_screen.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'dashboard_screen.dart';
 
 
 class SplashScreen extends StatefulWidget {
@@ -30,16 +30,15 @@ class _SplashScreenState extends State<SplashScreen> {
       Timer(const Duration(seconds: 2), () {
         if (!mounted) return;
 
-        if (!authService.isLoggedIn) {
-          debugPrint("SplashScreen: User is logged in. Navigating to Main App Screen.");
-           //TODO: 替換為實際的主畫面
-           Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
-           
+        if (authService.isLoggedIn) {
+          debugPrint("SplashScreen: User is logged in. Navigating to Dashboard Screen.");
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          );
         } else {
           debugPrint("SplashScreen: User is NOT logged in. Navigating to Login Screen.");
-          // 現在導航到真實的 LoginScreen
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const LoginScreen()), // <--- 修改導航目標
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         }
       });

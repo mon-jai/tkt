@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tkt/screens/tools_screen.dart';
-import 'home_screen.dart';
-import 'search_screen.dart';
+import 'dashboard_screen.dart';
 import 'discussion_screen.dart';
 import 'settings_screen.dart';
 
@@ -19,14 +18,12 @@ class _MainScreenState extends State<MainScreen> {
   Widget _getPageForIndex(int index) {
     switch (index) {
       case 0:
-        return const HomeScreen();
+        return const DashboardScreen();
       case 1:
-        return const SearchScreen();
-      case 2:
         return const DiscussionScreen();
-      case 3:
+      case 2:
         return const ToolsScreen();
-      case 4:
+      case 3:
         return const SettingsScreen();
       default:
         return const Center(child: Text('頁面不存在'));
@@ -48,12 +45,8 @@ class _MainScreenState extends State<MainScreen> {
         type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '首頁',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: '搜尋',
+            icon: Icon(Icons.dashboard),
+            label: '儀表板',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.forum),

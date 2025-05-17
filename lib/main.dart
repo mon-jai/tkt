@@ -46,16 +46,12 @@ class MyApp extends StatelessWidget {
           theme: _buildTheme(Brightness.light),
           darkTheme: _buildTheme(Brightness.dark),
           themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-          home: FutureBuilder<bool>(
-            future: context.read<StorageService>().shouldAutoLogin(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+          home: Consumer<AuthService>(
+            builder: (context, authService, child) {
+              if (authService.isLoading) {
                 return const Center(child: CircularProgressIndicator());
               }
-              
-              final shouldAutoLogin = snapshot.data ?? false;
-              // 暫時關閉自動登入功能
-              return const LoginScreen();
+              return authService.isLoggedIn ? const MainScreen() : const LoginScreen();
             },
           ),
           debugShowCheckedModeBanner: false,

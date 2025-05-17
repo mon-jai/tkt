@@ -44,6 +44,7 @@ class AuthService with ChangeNotifier {
   String? _token;
   String? _userAccount; // 儲存學號 (例如 "b1234567")
   bool _isLoggedIn = false;
+  bool _isLoading = false;
   UserProfile? _userProfile; // 新增: 用於儲存完整的 UserProfile
 
   AuthService({http.Client? client}) : _client = client ?? http.Client() {
@@ -53,6 +54,7 @@ class AuthService with ChangeNotifier {
   String? get token => _token;
   String? get userAccount => _userAccount; // 代表學號
   bool get isLoggedIn => _isLoggedIn;
+  bool get isLoading => _isLoading;
   UserProfile? get userProfile => _userProfile; // 提供 UserProfile 的 getter
 
   Future<void> _saveUserSession(String token, String account) async { // account 參數是學號
@@ -77,6 +79,9 @@ class AuthService with ChangeNotifier {
   }
 
   Future<void> _loadUserSession() async {
+    _isLoading = true;
+    notifyListeners();
+
     _token = await _secureStorage.read(key: _authTokenKey);
     final prefs = await SharedPreferences.getInstance();
     _userAccount = prefs.getString(_userAccountKey); // 載入學號
@@ -89,12 +94,10 @@ class AuthService with ChangeNotifier {
         } else {
           _isLoggedIn = true;
           // 嘗試獲取用戶資料以填充 _userProfile
-          final profileResult = await getProfile(); // 這裡的 getProfile 會使用已載入的 token
+          final profileResult = await getProfile();
           if (profileResult is Success<GetProfileResponse>) {
             _userProfile = profileResult.data.profile;
           } else {
-            // 即使無法獲取 profile，如果 token 仍然有效，保持登入狀態
-            // 但 _userProfile 可能為 null
             debugPrint("AuthService: Token valid but failed to fetch profile on load. User Account: $_userAccount");
           }
           debugPrint("AuthService: Session loaded. Token found, User Account (學號): $_userAccount, Profile loaded: ${profileResult is Success}");
@@ -105,9 +108,11 @@ class AuthService with ChangeNotifier {
       }
     } else {
       _isLoggedIn = false;
-      _userProfile = null; // 確保 profile 也被清除
+      _userProfile = null;
       debugPrint("AuthService: No token found during session load.");
     }
+
+    _isLoading = false;
     notifyListeners();
   }
 
