@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import 'about_screen.dart';
+import 'profile_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -23,7 +24,12 @@ class SettingsScreen extends StatelessWidget {
                 title: const Text('個人資料'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  // TODO: 導航到個人資料頁面
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  );
                 },
               ),
               const Divider(),

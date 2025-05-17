@@ -7,6 +7,7 @@ import 'screens/main_screen.dart';
 import 'services/auth_service.dart';
 import 'services/storage_service.dart';
 import 'providers/theme_provider.dart';
+import 'providers/announcement_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +27,7 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => ThemeProvider(storageService),
         ),
+        ChangeNotifierProvider(create: (_) => AnnouncementProvider()),
       ],
       child: const MyApp(),
     ),

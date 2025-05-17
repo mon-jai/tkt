@@ -34,7 +34,8 @@ dependencies:
   google_fonts: ^6.1.0 # 方便使用 Google Fonts 字體
 
   # Networking
-  http: ^1.2.0 # HTTP 請求 (或者您也可以選擇 dio)
+  http: ^1.1.0
+  html: ^0.15.4
 
   # Local Storage
   shared_preferences: ^2.2.2 # 類似 Android 的 SharedPreferences
@@ -46,7 +47,7 @@ dependencies:
   jwt_decoder: ^2.0.1
 
   # State Management (我們從 Provider 開始，您可以稍後更換為 BLoC, Riverpod, GetX 等)
-  provider: ^6.1.1
+  provider: ^6.0.5
 
   # Maps (如果需要 Google 地圖)
   # google_maps_flutter: ^2.5.0 # 取消註解並執行 flutter pub get 來加入
@@ -58,6 +59,8 @@ dependencies:
   intl: ^0.19.0
 
   # Add other packages here
+  url_launcher: ^6.1.14
+  flutter_html: ^3.0.0-beta.2
 
 dev_dependencies:
   flutter_test:
