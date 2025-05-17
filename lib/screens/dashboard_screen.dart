@@ -6,6 +6,7 @@ import '../services/course_service.dart';
 import 'announcement_screen.dart';
 import 'campus_map_screen.dart';
 import 'course_schedule_screen.dart';
+import 'calendar_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -83,7 +84,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         label: '行事曆',
         color: Colors.orange,
         onTap: () {
-          // TODO: 實現行事曆功能
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CalendarScreen()),
+          );
         },
       ),
       _QuickAction(

@@ -7,6 +7,7 @@ import 'screens/main_screen.dart';
 import 'services/auth_service.dart';
 import 'services/storage_service.dart';
 import 'services/course_service.dart';
+import 'services/calendar_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/announcement_provider.dart';
 
@@ -30,6 +31,7 @@ void main() async {
         ),
         ChangeNotifierProvider(create: (_) => AnnouncementProvider()),
         ChangeNotifierProvider(create: (_) => CourseService()),
+        ChangeNotifierProvider(create: (_) => CalendarService()),
       ],
       child: const MyApp(),
     ),
