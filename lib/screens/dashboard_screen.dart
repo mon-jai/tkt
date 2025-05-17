@@ -2,11 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/announcement_provider.dart';
 import '../services/auth_service.dart';
+import '../services/course_service.dart';
 import 'announcement_screen.dart';
 import 'campus_map_screen.dart';
+import 'course_schedule_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 在進入頁面時自動載入公告
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AnnouncementProvider>().refresh();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,40 +55,20 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildUserInfoCard(BuildContext context) {
     final authService = context.watch<AuthService>();
     final userProfile = authService.userProfile;
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: const Icon(Icons.person, size: 32, color: Colors.white),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '歡迎回來，${userProfile?.fullName ?? '同學'}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const Text(
-                        '今天是個美好的一天',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(
+              '歡迎回來，${userProfile?.fullName ?? '同學'}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '學號：${userProfile?.account ?? ''}',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
         ),
@@ -95,7 +91,10 @@ class DashboardScreen extends StatelessWidget {
         label: '課程',
         color: Colors.green,
         onTap: () {
-          // TODO: 實現課程功能
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CourseScheduleScreen()),
+          );
         },
       ),
       _QuickAction(
@@ -152,19 +151,21 @@ class DashboardScreen extends StatelessWidget {
         onTap: action.onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(action.icon, color: action.color, size: 32),
+              Icon(
+                action.icon,
+                size: 32,
+                color: action.color,
+              ),
               const SizedBox(height: 8),
               Text(
                 action.label,
-                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: action.color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -189,10 +190,12 @@ class DashboardScreen extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AnnouncementScreen()),
-                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AnnouncementScreen()),
+                    );
+                  },
                   child: const Text('查看更多'),
                 ),
               ],
@@ -201,15 +204,30 @@ class DashboardScreen extends StatelessWidget {
             Consumer<AnnouncementProvider>(
               builder: (context, provider, child) {
                 if (provider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
                 }
 
                 if (provider.error != null) {
-                  return const Center(child: Text('載入失敗'));
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(provider.error!),
+                    ),
+                  );
                 }
 
                 if (provider.announcements.isEmpty) {
-                  return const Center(child: Text('暫無公告'));
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('目前沒有公告'),
+                    ),
+                  );
                 }
 
                 // 只顯示前3則公告
@@ -225,7 +243,12 @@ class DashboardScreen extends StatelessWidget {
                       subtitle: Text(announcement.date),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () {
-                        // TODO: 導航到公告詳情頁
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AnnouncementScreen(),
+                          ),
+                        );
                       },
                     );
                   }).toList(),
@@ -254,19 +277,62 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () {
-                    // TODO: 導航到課程頁面
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CourseScheduleScreen(),
+                      ),
+                    );
                   },
                   child: const Text('查看更多'),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            // TODO: 實現課程預覽
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('今日無課程'),
-              ),
+            Consumer<CourseService>(
+              builder: (context, courseService, child) {
+                final todayCourses = courseService.getTodayCourses();
+                final upcomingCourses = courseService.getUpcomingCourses();
+                debugPrint('今日所有課程: ${todayCourses.length}');
+                debugPrint('即將到來的課程: ${upcomingCourses.length}');
+                
+                if (upcomingCourses.isEmpty) {
+                  if (todayCourses.isNotEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('今日課程已結束'),
+                      ),
+                    );
+                  }
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('今日無課程'),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: upcomingCourses.take(3).map((course) {
+                    return ListTile(
+                      title: Text(course.name),
+                      subtitle: Text(
+                        '${course.teacher} - ${course.classroom}\n${course.formattedTimeRange}',
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CourseScheduleScreen(),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                );
+              },
             ),
           ],
         ),
@@ -301,7 +367,7 @@ class DashboardScreen extends StatelessWidget {
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('暫無活動'),
+                child: Text('目前沒有活動'),
               ),
             ),
           ],

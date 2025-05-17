@@ -6,6 +6,7 @@ import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/auth_service.dart';
 import 'services/storage_service.dart';
+import 'services/course_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/announcement_provider.dart';
 
@@ -28,6 +29,7 @@ void main() async {
           create: (_) => ThemeProvider(storageService),
         ),
         ChangeNotifierProvider(create: (_) => AnnouncementProvider()),
+        ChangeNotifierProvider(create: (_) => CourseService()),
       ],
       child: const MyApp(),
     ),

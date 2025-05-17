@@ -10,26 +10,16 @@ class DiscussionScreen extends StatelessWidget {
     final discussions = [
       Discussion(
         id: '1',
-        title: '請問有人知道圖書館閱覽室的使用規則嗎？',
-        content: '最近想去圖書館閱覽室讀書，但不太清楚使用規則...',
+        title: '我還沒時間做',
+        content: '但我會盡量趕出來的',
         createTime: DateTime.now().subtract(const Duration(hours: 2)),
-        author: '新生提問',
-        category: '校園生活',
-        likes: 5,
-        comments: 3,
-        tags: ['圖書館', '問題諮詢'],
+        author: 'Kiv',
+        category: '開發',
+        likes: 66666,
+        comments: 0,
+        tags: ['0', 'GG'],
       ),
-      Discussion(
-        id: '2',
-        title: '推薦學校附近的美食',
-        content: '分享一下最近發現的好吃餐廳...',
-        createTime: DateTime.now().subtract(const Duration(hours: 5)),
-        author: '美食達人',
-        category: '美食分享',
-        likes: 15,
-        comments: 8,
-        tags: ['美食', '推薦'],
-      ),
+
     ];
 
     return Scaffold(
