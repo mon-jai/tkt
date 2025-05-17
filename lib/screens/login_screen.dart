@@ -81,23 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await storageService.setKeepLoggedIn(_keepLoggedIn);
 
       try {
-        // 為了避免問題，先使用一個簡單的成功登入模擬
-        // 實際上，應該使用下面注釋的代碼
-        await Future.delayed(const Duration(seconds: 1));
-
-        if (!mounted) return;
-
-        setState(() {
-          _isLoading = false;
-        });
-
-        // 直接導航到主畫面
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-          (route) => false,
-        );
-
-        /*
+        // 移除模擬登入
         final result = await authService.login(request);
 
         if (!mounted) return;
@@ -122,7 +106,6 @@ class _LoginScreenState extends State<LoginScreen> {
         } else if (result is ApiException<LoginResponse>) {
           _showErrorSnackBar('登入時發生無法預期的錯誤: ${result.exception.toString()}');
         }
-        */
       } catch (e) {
         if (!mounted) return;
         setState(() {
