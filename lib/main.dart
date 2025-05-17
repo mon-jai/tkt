@@ -8,6 +8,7 @@ import 'services/auth_service.dart';
 import 'services/storage_service.dart';
 import 'services/course_service.dart';
 import 'services/calendar_service.dart';
+import 'services/ntust_auth_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/announcement_provider.dart';
 
@@ -22,6 +23,10 @@ void main() async {
       providers: [
         ChangeNotifierProvider<AuthService>(
           create: (_) => AuthService(),
+        ),
+        ChangeNotifierProvider<NtustAuthService>(
+          create: (_) => NtustAuthService(),
+          lazy: false,
         ),
         Provider<StorageService>(
           create: (_) => storageService,
@@ -50,8 +55,8 @@ class MyApp extends StatelessWidget {
           theme: _buildTheme(Brightness.light),
           darkTheme: _buildTheme(Brightness.dark),
           themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-          home: Consumer<AuthService>(
-            builder: (context, authService, child) {
+          home: Consumer2<AuthService, NtustAuthService>(
+            builder: (context, authService, ntustAuthService, child) {
               if (authService.isLoading) {
                 return const Center(child: CircularProgressIndicator());
               }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import 'about_screen.dart';
 import 'profile_screen.dart';
+import 'auth_test_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -60,6 +61,21 @@ class SettingsScreen extends StatelessWidget {
                     themeProvider.toggleTheme();
                   },
                 ),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.bug_report),
+                title: const Text('登入測試'),
+                subtitle: const Text('測試台科大登入功能'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AuthTestScreen(),
+                    ),
+                  );
+                },
               ),
               const Divider(),
               ListTile(

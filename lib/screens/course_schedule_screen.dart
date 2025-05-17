@@ -55,6 +55,14 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
     );
   }
 
+  // 跳轉到台科大課表匯入頁面
+  void _navigateToImportFromNtust(BuildContext context) {
+    //Navigator.push(
+      //context,
+      //MaterialPageRoute(builder: (context) => const ImportCourseScreen()),
+    //);
+  }
+
   Future<void> _importCourses(BuildContext context) async {
     String jsonData = '';
     
@@ -351,17 +359,53 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.file_upload),
-            onPressed: () => _importCourses(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.file_download),
-            onPressed: () => _exportCourses(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddCourseDialog(context),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              switch (value) {
+                case 'add':
+                  _showAddCourseDialog(context);
+                  break;
+                case 'import':
+                  _importCourses(context);
+                  break;
+                case 'export':
+                  _exportCourses(context);
+                  break;
+                case 'import_ntust':
+                  _navigateToImportFromNtust(context);
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'add',
+                child: ListTile(
+                  leading: Icon(Icons.add),
+                  title: Text('新增課程'),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'import',
+                child: ListTile(
+                  leading: Icon(Icons.upload),
+                  title: Text('從 JSON 導入課表'),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'export',
+                child: ListTile(
+                  leading: Icon(Icons.download),
+                  title: Text('導出課表為 JSON'),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'import_ntust',
+                child: ListTile(
+                  leading: Icon(Icons.school),
+                  title: Text('匯入台科大課表'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
