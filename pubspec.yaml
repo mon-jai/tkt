@@ -28,6 +28,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # UI & Styling
   cupertino_icons: ^1.0.2 # iOS 風格圖示

@@ -11,6 +11,15 @@ class StorageService {
 
   StorageService(this._prefs);
 
+  // 通用存取方法
+  Future<void> setString(String key, String value) async {
+    await _prefs.setString(key, value);
+  }
+
+  Future<String?> getString(String key) async {
+    return _prefs.getString(key);
+  }
+
   // 儲存帳號密碼
   Future<void> saveCredentials(String account, String password) async {
     await _prefs.setString(_accountKey, account);

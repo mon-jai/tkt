@@ -1,9 +1,11 @@
 // lib/ui/pages/ntust_connector_test_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 // TODO: 將 'tkt' 替換為您專案的實際名稱
 import 'package:tkt/connector/core/dio_connector.dart';
 import 'package:tkt/connector/ntust_connector.dart';
 import 'package:tkt/debug/log/log.dart'; // 您提供的 Log 類別
+import 'package:tkt/models/ntust/ap_tree_json.dart';
 
 // TODO: 匯入您用於顯示目標頁面的 WebView 頁面
 // 如果使用我之前提供的 GeneralWebViewPage:
@@ -25,6 +27,8 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
 
   bool _isLoading = false;
   String _statusMessage = '';
+  String _cookieInfo = '';
+  String _sessionInfo = '';
 
   late Future<void> _initializationFuture;
 
@@ -57,34 +61,38 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
   }
 
   // ⭐ 修改後的 _handleLoginSuccess 方法
+  // ⭐ 修改後的 _handleLoginSuccess 方法
   Future<void> _handleLoginSuccess(String loginTypeMessage) async {
     if (!mounted) return;
     setState(() {
-      // 更新狀態訊息，準備跳轉
+      // 1. 更新狀態訊息，提示將要開啟 WebView 進行檢查
       _statusMessage = '$loginTypeMessage 成功！Cookies 已設定。\n將開啟目標頁面 (${Uri.parse(_targetVerificationUrl).host}) 進行目視檢查...';
-      _isLoading = true; // 可以在跳轉前短暫顯示 loading
+      _isLoading = true; // 短暫顯示 loading
     });
-    Log.d(_statusMessage);
+    Log.d(_statusMessage); // 假設您已修復 Log.d 的問題
 
-    // 短暫延遲，讓使用者可以看到狀態訊息的變化
-    await Future.delayed(const Duration(milliseconds: 1500));
+    await Future.delayed(const Duration(milliseconds: 1500)); // 讓使用者看到訊息
 
     if (mounted) {
       setState(() {
-        _isLoading = false; // 在導航前停止 loading，因為新頁面會有自己的 loading
+        _isLoading = false; // 在導航前解除 loading
       });
-      // 導航到通用的 WebView 頁面，讓使用者親自查看
+      // 2. 導航到一個 WebView 頁面 (這裡使用 ManualLoginWebViewScreen 作為範例，
+      //    但您也可以替換為更通用的 GeneralWebViewPage，如果您已建立它的話)
       Navigator.of(context).push(
         MaterialPageRoute(
-          // 使用 GeneralWebViewPage 或您選擇的其他 WebView 頁面
-          builder: (context) => GeneralWebViewPage( // ⭐ 使用 GeneralWebViewPage
-            initialUrl: _targetVerificationUrl,
+          // 您可以選擇使用 ManualLoginWebViewScreen 或 GeneralWebViewPage
+          builder: (context) => GeneralWebViewPage( // ⭐ 或者 GeneralWebViewPage
+            initialUrl: _targetVerificationUrl, // 載入您指定的驗證 URL
+            // 如果是 GeneralWebViewPage，還可以傳入 title 參數，例如：
+            // title: "Session 檢查 (${Uri.parse(_targetVerificationUrl).host})",
           ),
         ),
       ).then((_) {
-        // 從 WebView 頁面返回後的操作 (可選)
+        // 從 WebView 返回後的操作 (可選)
         if (mounted) {
           setState(() {
+            // 3. 從 WebView 返回後，更新狀態訊息讓使用者自行判斷
             _statusMessage = "$loginTypeMessage 流程結束。\n請根據您在 WebView 中看到的頁面內容，自行判斷 Session 是否有效。";
           });
         }
@@ -190,6 +198,88 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
     }
   }
 
+  Future<void> _updateCookieInfo() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final cookieManager = CookieManager.instance();
+      final cookies = await cookieManager.getCookies(url: WebUri(_targetVerificationUrl));
+      
+      final StringBuffer cookieText = StringBuffer();
+      cookieText.writeln('目前的 Cookies:');
+      for (var cookie in cookies) {
+        cookieText.writeln('- ${cookie.name}: ${cookie.value}');
+        cookieText.writeln('  Domain: ${cookie.domain}');
+        cookieText.writeln('  Expires: ${cookie.expiresDate ?? "Session"}');
+        cookieText.writeln('');
+      }
+
+      if (mounted) {
+        setState(() {
+          _cookieInfo = cookieText.toString();
+          _statusMessage = '已更新 Cookie 資訊';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cookieInfo = '獲取 Cookie 時發生錯誤：$e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateSessionInfo() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final subSystems = await NTUSTConnector.getSubSystem();
+      
+      final StringBuffer sessionText = StringBuffer();
+      sessionText.writeln('子系統資訊:');
+      for (var system in subSystems) {
+        sessionText.writeln('- ${system.serviceId}');
+        if (system.apList != null) {
+          for (var ap in system.apList!) {
+            sessionText.writeln('  └─ ${ap.name} (${ap.url})');
+          }
+        }
+        sessionText.writeln('');
+      }
+
+      if (mounted) {
+        setState(() {
+          _sessionInfo = sessionText.toString();
+          _statusMessage = '已更新子系統資訊';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _sessionInfo = '獲取子系統資訊時發生錯誤：$e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
@@ -246,15 +336,62 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
               ),
             ],
             const SizedBox(height: 24),
+            
+            // Cookie 和 Session 資訊區域
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('系統資訊', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.refresh),
+                            onPressed: () async {
+                              await _updateCookieInfo();
+                              await _updateSessionInfo();
+                            },
+                            tooltip: '更新資訊',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  if (_cookieInfo.isNotEmpty) ...[
+                    const Text('Cookie 資訊:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    SelectableText(_cookieInfo, style: const TextStyle(fontFamily: 'monospace')),
+                    const Divider(),
+                  ],
+                  if (_sessionInfo.isNotEmpty) ...[
+                    const Text('Session 資訊:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    SelectableText(_sessionInfo, style: const TextStyle(fontFamily: 'monospace')),
+                  ],
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
             if (_statusMessage.isNotEmpty)
-              Text(
-                _statusMessage,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: _statusMessage.contains('成功') && !_statusMessage.contains('失敗')
-                      ? Colors.green.shade700
-                      : Colors.red.shade700,
-                  fontSize: 16,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  _statusMessage,
+                  style: TextStyle(
+                    color: _statusMessage.contains('錯誤') || _statusMessage.contains('失敗')
+                        ? Colors.red
+                        : Colors.green,
+                  ),
                 ),
               ),
           ],

@@ -62,7 +62,6 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).primaryColor,
         onTap: _onItemTapped,
       ),
     );
