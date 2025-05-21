@@ -6,10 +6,6 @@ import 'package:tkt/connector/core/dio_connector.dart';
 import 'package:tkt/connector/ntust_connector.dart';
 import 'package:tkt/debug/log/log.dart'; // 您提供的 Log 類別
 import 'package:tkt/models/ntust/ap_tree_json.dart';
-
-// TODO: 匯入您用於顯示目標頁面的 WebView 頁面
-// 如果使用我之前提供的 GeneralWebViewPage:
-import 'general_webview_page.dart';
 // 或者如果您有 manual_login_webview_screen.dart 並且想用它來顯示 (雖然它的設計初衷是手動登入)
 import 'manual_login_webview_screen.dart';
 
@@ -34,8 +30,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
 
   // ⭐ 將要目視檢查的目標 URL 移到這裡，方便修改
   static const String _targetVerificationUrl = "https://courseselection.ntust.edu.tw/";
-  // 或者，如果您先前在測試頁面中定義的是成績查詢頁面，也可以用那個：
-  // static const String _targetVerificationUrl = "https://stuinfosys.ntust.edu.tw/StuScoreQueryServ/StuScoreQuery";
+  static const String _scoreQueryUrl = "https://stuinfosys.ntust.edu.tw/StuScoreQueryServ/StuScoreQuery";
 
 
   @override
@@ -82,7 +77,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
       Navigator.of(context).push(
         MaterialPageRoute(
           // 您可以選擇使用 ManualLoginWebViewScreen 或 GeneralWebViewPage
-          builder: (context) => GeneralWebViewPage( // ⭐ 或者 GeneralWebViewPage
+          builder: (context) => ManualLoginWebViewScreen( // ⭐ 或者 GeneralWebViewPage
             initialUrl: _targetVerificationUrl, // 載入您指定的驗證 URL
             // 如果是 GeneralWebViewPage，還可以傳入 title 參數，例如：
             // title: "Session 檢查 (${Uri.parse(_targetVerificationUrl).host})",
@@ -100,85 +95,17 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
     }
   }
 
-  Future<void> _performAutomatedLoginAndVerify() async {
-    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
-      if (mounted) setState(() => _statusMessage = '請輸入學號和密碼');
-      return;
-    }
 
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _statusMessage = '嘗試自動登入 (使用 HeadlessInAppWebView)...';
-      });
-    }
-
-    try {
-      final Map<String, dynamic> loginResult = await NTUSTConnector.login(
-        _usernameController.text,
-        _passwordController.text,
-      );
-
-      final loginStatus = loginResult['status'];
-      final loginMessage = loginResult['message'] as String?;
-
-      if (loginStatus == NTUSTLoginStatus.success) {
-        // ⭐ 登入成功後，直接呼叫修改後的 _handleLoginSuccess
-        await _handleLoginSuccess("自動登入");
-      } else if (loginStatus == NTUSTLoginStatus.fail) {
-        if (mounted) {
-          setState(() {
-            _statusMessage = '自動登入失敗：${loginMessage ?? "未知錯誤"}';
-            Log.d(_statusMessage);
-            if (loginMessage != null &&
-                (loginMessage.toLowerCase().contains('captcha') ||
-                 loginMessage.toLowerCase().contains('驗證碼') ||
-                 loginMessage.contains('validation-summary-errors'))) {
-              _statusMessage += '\n偵測到可能的驗證碼問題，建議嘗試手動登入。';
-            }
-          });
-        }
-      } else {
-        // ... （處理未知登入狀態）
-        if (mounted) {
-          setState(() {
-            _statusMessage = '登入狀態未知或返回結果格式不符。';
-            Log.d('自動登入狀態未知: $loginStatus, message: $loginMessage');
-          });
-        }
-      }
-    } catch (e, s) {
-      Log.eWithStack('自動登入過程中發生例外: ${e.toString()}', s);
-      if (mounted) {
-        setState(() {
-          _statusMessage = '自動登入過程中發生例外：\n${e.toString()}';
-        });
-      }
-    } finally {
-      // ⭐ 注意：isLoading 的解除現在主要由 _handleLoginSuccess 或其他流程的 finally 控制
-      // 但如果 _handleLoginSuccess 沒有被呼叫（例如登入直接失敗），這裡還是需要解除
-      if (mounted && _isLoading) { // 只有在 _isLoading 仍為 true 時才解除
-          if (!(_statusMessage.contains("將開啟目標頁面") && _statusMessage.contains("成功！Cookies 已設定"))) {
-             // 如果不是即將跳轉的狀態，則解除 loading
-            setState(() {
-              _isLoading = false;
-            });
-          }
-      }
-    }
-  }
-
-  Future<void> _navigateToManualLoginAndVerify() async {
+  Future<void> _navigateToManualLogin() async {
     if (!mounted) return;
     setState(() {
       _statusMessage = '轉至手動登入頁面...';
       _isLoading = true;
     });
 
-    // 導航到 ManualLoginWebViewScreen 並等待結果
     final result = await Navigator.of(context).push<NTUSTLoginStatus>(
       MaterialPageRoute(
-        builder: (context) => ManualLoginWebViewScreen( // 假設這個頁面您還保留
+        builder: (context) => ManualLoginWebViewScreen(
           initialUrl: NTUSTConnector.ntustLoginUrl,
         ),
       ),
@@ -186,15 +113,73 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
 
     if (!mounted) return;
 
+    setState(() {
+      _isLoading = false;
+      _statusMessage = result == NTUSTLoginStatus.success ? '手動登入成功' : '手動登入未完成或失敗';
+    });
+
     if (result == NTUSTLoginStatus.success) {
-      // ⭐ 手動登入成功後，也呼叫修改後的 _handleLoginSuccess
-      await _handleLoginSuccess("手動登入");
-    } else {
+      await _updateCookieInfo();
+      await _updateSessionInfo();
+    }
+  }
+
+  Future<void> _openScoreQuery() async {
+    if (!mounted) return;
+    setState(() {
+      _statusMessage = '開啟成績查詢頁面...';
+      _isLoading = true;
+    });
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ManualLoginWebViewScreen(
+          initialUrl: _scoreQueryUrl,
+        ),
+      ),
+    );
+
+    if (mounted) {
       setState(() {
-        _isLoading = false; // 確保解除 loading
-        _statusMessage = '手動登入未完成或失敗。';
-        Log.d('手動登入失敗或取消');
+        _isLoading = false;
+        _statusMessage = '已關閉成績查詢頁面';
       });
+      await _updateCookieInfo();
+    }
+  }
+
+  Future<void> _clearAllCookies() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _statusMessage = '正在清除所有 Cookies...';
+    });
+
+    try {
+      final cookieManager = CookieManager.instance();
+      await cookieManager.deleteAllCookies();
+      await DioConnector.instance.cookiesManager?.deleteAll();
+      
+      if (mounted) {
+        setState(() {
+          _statusMessage = '已清除所有 Cookies';
+          _cookieInfo = '';
+          _sessionInfo = '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _statusMessage = '清除 Cookies 時發生錯誤：$e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        await _updateCookieInfo();
+      }
     }
   }
 
@@ -206,7 +191,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
 
     try {
       final cookieManager = CookieManager.instance();
-      final cookies = await cookieManager.getCookies(url: WebUri(_targetVerificationUrl));
+      final cookies = await cookieManager.getCookies(url: WebUri(NTUSTConnector.ntustLoginUrl));
       
       final StringBuffer cookieText = StringBuffer();
       cookieText.writeln('目前的 Cookies:');
@@ -297,42 +282,36 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            TextField(
-              controller: _usernameController,
-              decoration: const InputDecoration(
-                labelText: '學號',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.text,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(
-                labelText: '密碼',
-                border: OutlineInputBorder(),
-              ),
-              obscureText: true,
-            ),
             const SizedBox(height: 24),
             if (_isLoading)
               const Center(child: CircularProgressIndicator())
             else ...[
-              ElevatedButton(
-                onPressed: _performAutomatedLoginAndVerify,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('測試自動登入並檢查 Session'),
-              ),
               const SizedBox(height: 10),
               ElevatedButton(
-                onPressed: _navigateToManualLoginAndVerify,
+                onPressed: _navigateToManualLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.secondary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('開啟手動登入並檢查 Session'),
+                child: const Text('開啟手動登入'),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _openScoreQuery,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('開啟成績查詢'),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _clearAllCookies,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('清除所有 Cookies'),
               ),
             ],
             const SizedBox(height: 24),
@@ -405,7 +384,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
     // ... (Scaffold 和 FutureBuilder 與您提供的版本相同)
     return Scaffold(
       appBar: AppBar(
-        title: const Text('NTUST Session 目視檢查'),
+        title: const Text('NTUST 登入測試'),
       ),
       body: FutureBuilder<void>(
         future: _initializationFuture,

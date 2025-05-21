@@ -2,6 +2,7 @@
 import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 // TODO: 修改 'tkt' 為您的專案名稱
 import 'package:tkt/connector/core/dio_connector.dart';
 import 'package:tkt/connector/ntust_connector.dart'; // 主要為了 ntustLoginUrl 和 NTUSTLoginStatus
@@ -20,9 +21,110 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
   final CookieManager _cookieManager = CookieManager.instance();
   bool _isLoading = true;
   String _pageTitle = "手動登入";
-
-  // 標記是否已成功提取並保存 Cookie
   bool _cookiesExtractedAndSaved = false;
+  static const String _studentIdKey = 'stored_student_id';
+  static const String _passwordKey = 'stored_password';
+
+  Future<bool> _waitForElement(String selector, {int maxAttempts = 10}) async {
+    for (int i = 0; i < maxAttempts; i++) {
+      final exists = await _webViewController?.evaluateJavascript(
+        source: '''
+          (function() {
+            var element = document.querySelector('${selector}');
+            console.log('檢查元素 ${selector}: ' + (element ? '存在' : '不存在'));
+            return element != null;
+          })()
+        '''
+      );
+      
+      if (exists == true) {
+        debugPrint('找到元素: $selector');
+        return true;
+      }
+      
+      debugPrint('等待元素: $selector, 嘗試次數: ${i + 1}');
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    debugPrint('找不到元素: $selector, 已達最大嘗試次數');
+    return false;
+  }
+
+  Future<void> _autoFillCredentials() async {
+    if (_webViewController == null) return;
+
+    try {
+      debugPrint('開始自動填入流程');
+      final prefs = await SharedPreferences.getInstance();
+      final storedStudentId = prefs.getString(_studentIdKey);
+      final storedPassword = prefs.getString(_passwordKey);
+
+      if (storedStudentId != null && storedPassword != null) {
+        debugPrint('找到儲存的帳號密碼');
+        
+        // 等待頁面完全載入
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        // 檢查頁面標題，確保我們在正確的頁面
+        final pageTitle = await _webViewController?.getTitle();
+        debugPrint('當前頁面標題: $pageTitle');
+        
+        // 等待登入表單出現
+        final elementExists = await _waitForElement('form.login-form-container');
+        
+        if (elementExists) {
+          debugPrint('找到登入表單，開始填入資料');
+          final result = await _webViewController?.evaluateJavascript(
+            source: '''
+              (function() {
+                try {
+                  console.log('開始執行自動填入 JavaScript');
+                  
+                  var userIdInput = document.querySelector('input[name="UserName"]');
+                  var passwordInput = document.querySelector('input[name="Password"]');
+                  var loginForm = document.querySelector('form.login-form-container');
+                  
+                  if (userIdInput && passwordInput) {
+                    console.log('開始填入帳號密碼');
+                    
+                    userIdInput.value = "$storedStudentId";
+                    passwordInput.value = "$storedPassword";
+                    
+                    userIdInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    
+                    console.log('帳號密碼已填入');
+                    
+                    if (typeof grecaptcha !== 'undefined' && grecaptcha) {
+                      console.log('發現 reCAPTCHA，執行驗證');
+                      grecaptcha.execute();
+                    } else {
+                      console.log('沒有發現 reCAPTCHA，嘗試直接提交表單');
+                      if (loginForm) {
+                        loginForm.submit();
+                      }
+                    }
+                    return true;
+                  }
+                  console.log('無法找到必要的表單元素');
+                  return false;
+                } catch (e) {
+                  console.error('自動填入過程發生錯誤:', e);
+                  return false;
+                }
+              })()
+            '''
+          );
+          debugPrint('JavaScript 執行結果: $result');
+        } else {
+          debugPrint('等待登入表單元素超時');
+        }
+      } else {
+        debugPrint('沒有找到儲存的帳號密碼');
+      }
+    } catch (e) {
+      debugPrint('自動填入失敗: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +133,17 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
         title: Text(_pageTitle),
         actions: [
           IconButton(
-            icon: const Icon(Icons.check),
-            // 讓使用者在認為登入成功後，手動觸發 Cookie 提取和頁面關閉
-            onPressed: _cookiesExtractedAndSaved
-                ? null // 如果已經提取過，則禁用
-                : () async {
-                    await _extractAndSaveCookiesAndPop(NTUSTLoginStatus.success);
-                  },
+            icon: const Icon(Icons.refresh),
+            onPressed: () async {
+              debugPrint('手動重新執行自動填入');
+              await _autoFillCredentials();
+            },
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(NTUSTLoginStatus.success);
+            },
+            child: const Text('完成', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -49,7 +155,7 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
               useShouldOverrideUrlLoading: true,
               mediaPlaybackRequiresUserGesture: false,
               javaScriptEnabled: true,
-              useHybridComposition: true, // 根據需要調整
+              useHybridComposition: true,
               allowsInlineMediaPlayback: true,
             ),
             onWebViewCreated: (controller) {
@@ -64,14 +170,8 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
                   _isLoading = false;
                   _pageTitle = url?.toString() ?? "手動登入";
                 });
+                await _autoFillCredentials();
               }
-              // 自動檢查是否登入成功 (可選，但較難判斷)
-              // 例如，檢查 URL 是否已跳轉到登入後的某個特定頁面
-              // String currentUrl = url.toString();
-              // if (currentUrl.contains("ntust.edu.tw/student") && !currentUrl.contains("Login")) {
-              //   // 假設跳轉到學生主頁表示成功
-              //   await _extractAndSaveCookiesAndPop(NTUSTLoginStatus.success);
-              // }
             },
             onProgressChanged: (controller, progress) {
               if (progress == 100 && mounted) {
@@ -79,12 +179,6 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
               } else if (mounted && progress < 100 && !_isLoading) {
                 setState(() => _isLoading = true);
               }
-            },
-            onReceivedHttpError: (controller, request, errorResponse) {
-              // logPrint("HTTP Error: ${errorResponse.statusCode} for ${request.url}");
-            },
-            onLoadError: (controller, url, code, message) {
-              // logPrint("WebView Error: $code, $message for $url");
             },
             shouldOverrideUrlLoading: (controller, navigationAction) async {
               return NavigationActionPolicy.ALLOW;
