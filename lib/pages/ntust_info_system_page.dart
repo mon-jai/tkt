@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tkt/connector/ntust_connector.dart';
 import 'package:tkt/models/ntust/ap_tree_json.dart';
-import 'package:tkt/pages/manual_login_webview_screen.dart';
+import 'package:tkt/pages/webview_screen.dart';
 import 'package:tkt/debug/log/log.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -71,11 +71,9 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
     try {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => ManualLoginWebViewScreen(
+          builder: (context) => WebViewScreen(
             initialUrl: url,
             title: title,
-            username: _username,
-            password: _password,
             onLoginResult: (success) {
               if (!success) {
                 ScaffoldMessenger.of(context).showSnackBar(

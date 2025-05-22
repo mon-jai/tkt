@@ -11,14 +11,14 @@ import 'package:tkt/connector/ntust_connector.dart';
 import 'package:tkt/debug/log/log.dart'; // 主要為了 ntustLoginUrl 和 NTUSTLoginStatus
 import 'package:html/parser.dart';
 
-class ManualLoginWebViewScreen extends StatefulWidget {
+class WebViewScreen extends StatefulWidget {
   final String initialUrl;
   final String title;
   final Function(bool)? onLoginResult;
   final String? username;  // 新增：可選的用戶名
   final String? password;  // 新增：可選的密碼
 
-  const ManualLoginWebViewScreen({
+  const WebViewScreen({
     required this.initialUrl,
     required this.title,
     this.onLoginResult,
@@ -28,10 +28,10 @@ class ManualLoginWebViewScreen extends StatefulWidget {
   });
 
   @override
-  State<StatefulWidget> createState() => _ManualLoginWebViewScreenState();
+  State<StatefulWidget> createState() => _WebViewScreenState();
 }
 
-class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
+class _WebViewScreenState extends State<WebViewScreen> {
   // Cookie 管理器實例
   final cookieManager = CookieManager.instance();
   late final cookieJar = DioConnector.instance.cookiesManager;
@@ -162,6 +162,10 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
       
       Log.d('自動填入完成，準備點擊登入按鈕');
       
+      setState(() {
+        _showLoadingDialog = true;
+      });
+      
       // 點擊登入按鈕
       await _clickLoginButton(loginType);
       
@@ -173,6 +177,9 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
       if (hasRecaptcha) {
         Log.d('檢測到 reCAPTCHA，等待使用者驗證');
         if (mounted) {
+          setState(() {
+            _showLoadingDialog = false;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('請完成圖片驗證，驗證完成後會自動繼續登入'),
@@ -188,25 +195,21 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
           captchaCompleted = !await _hasReCaptcha();
           if (captchaCompleted) {
             Log.d('reCAPTCHA 驗證完成，重新點擊登入');
+            setState(() {
+              _showLoadingDialog = true;
+            });
             await _clickLoginButton(loginType);
             break;
           }
         }
       }
-      
-      setState(() {
-        _showLoadingDialog = true;
-      });
-      
-      // 5秒後自動隱藏載入對話框
-      await Future.delayed(const Duration(seconds: 5));
+    } catch (e) {
+      Log.e('自動填入過程發生錯誤：$e');
       if (mounted) {
         setState(() {
           _showLoadingDialog = false;
         });
       }
-    } catch (e) {
-      Log.e('自動填入過程發生錯誤：$e');
     }
   }
 
@@ -362,13 +365,28 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
         Log.d('已保存新的 Cookies 到 DioConnector');
 
         _cookiesExtractedAndSaved = true;
+        if (mounted) {
+          setState(() {
+            _showLoadingDialog = false;
+          });
+        }
         widget.onLoginResult?.call(true);
       } else {
         Log.d('沒有找到需要保存的 Cookies');
+        if (mounted) {
+          setState(() {
+            _showLoadingDialog = false;
+          });
+        }
         widget.onLoginResult?.call(false);
       }
     } catch (e) {
       Log.e('提取和保存 Cookies 時發生錯誤: $e');
+      if (mounted) {
+        setState(() {
+          _showLoadingDialog = false;
+        });
+      }
       widget.onLoginResult?.call(false);
     }
   }

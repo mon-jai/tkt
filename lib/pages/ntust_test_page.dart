@@ -7,7 +7,7 @@ import 'package:tkt/connector/ntust_connector.dart';
 import 'package:tkt/debug/log/log.dart'; // 您提供的 Log 類別
 import 'package:tkt/models/ntust/ap_tree_json.dart';
 // 或者如果您有 manual_login_webview_screen.dart 並且想用它來顯示 (雖然它的設計初衷是手動登入)
-import 'manual_login_webview_screen.dart';
+import 'webview_screen.dart';
 
 
 class NtustConnectorTestPage extends StatefulWidget {
@@ -79,7 +79,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
       Navigator.of(context).push(
         MaterialPageRoute(
           // 您可以選擇使用 ManualLoginWebViewScreen 或 GeneralWebViewPage
-          builder: (context) => ManualLoginWebViewScreen( // ⭐ 或者 GeneralWebViewPage
+          builder: (context) => WebViewScreen( // ⭐ 或者 GeneralWebViewPage
             initialUrl: _targetVerificationUrl, // 載入您指定的驗證 URL
             title: "Session 檢查 (${Uri.parse(_targetVerificationUrl).host})",
             onLoginResult: (success) {
@@ -113,7 +113,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
 
       final result = await Navigator.of(context).push<NTUSTLoginStatus>(
         MaterialPageRoute(
-          builder: (context) => ManualLoginWebViewScreen(
+          builder: (context) => WebViewScreen(
             initialUrl: NTUSTConnector.ntustLoginUrl,
             title: '手動登入',
             username: _usernameController.text,  // 加入自動填入帳號
@@ -150,36 +150,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
     }
   }
 
-  Future<void> _openScoreQuery() async {
-    if (!mounted) return;
-    setState(() {
-      _statusMessage = '開啟成績查詢頁面...';
-      _isLoading = true;
-    });
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => ManualLoginWebViewScreen(
-          initialUrl: _scoreQueryUrl,
-          title: '成績查詢',
-          onLoginResult: (success) {
-            if (success) {
-              Navigator.of(context).pop();
-            }
-          },
-        ),
-      ),
-    );
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _statusMessage = '已關閉成績查詢頁面';
-      });
-      await _updateCookieInfo();
-    }
-  }
-
+  
   Future<void> _clearAllCookies() async {
     if (!mounted) return;
     setState(() {
@@ -359,16 +330,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: const Text('開啟手動登入'),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _openScoreQuery,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('開啟成績查詢'),
-              ),
+              ),      
               const SizedBox(height: 10),
               ElevatedButton(
                 onPressed: _clearAllCookies,
