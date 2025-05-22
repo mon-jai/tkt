@@ -29,8 +29,8 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
   late Future<void> _initializationFuture;
 
   // ⭐ 將要目視檢查的目標 URL 移到這裡，方便修改
-  static const String _targetVerificationUrl = "https://courseselection.ntust.edu.tw/";
-  static const String _scoreQueryUrl = "https://stuinfosys.ntust.edu.tw/StuScoreQueryServ/StuScoreQuery";
+  static const String _targetVerificationUrl = "https://ssoam.ntust.edu.tw/nidp/app/login";
+  static const String _scoreQueryUrl = "https://stuinfosys.ntust.edu.tw/JudgeCourseServ/JudgeCourse/ListJudge";
 
 
   @override
@@ -79,8 +79,12 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
           // 您可以選擇使用 ManualLoginWebViewScreen 或 GeneralWebViewPage
           builder: (context) => ManualLoginWebViewScreen( // ⭐ 或者 GeneralWebViewPage
             initialUrl: _targetVerificationUrl, // 載入您指定的驗證 URL
-            // 如果是 GeneralWebViewPage，還可以傳入 title 參數，例如：
-            // title: "Session 檢查 (${Uri.parse(_targetVerificationUrl).host})",
+            title: "Session 檢查 (${Uri.parse(_targetVerificationUrl).host})",
+            onLoginResult: (success) {
+              if (success) {
+                Navigator.of(context).pop();
+              }
+            },
           ),
         ),
       ).then((_) {
@@ -107,6 +111,14 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
       MaterialPageRoute(
         builder: (context) => ManualLoginWebViewScreen(
           initialUrl: NTUSTConnector.ntustLoginUrl,
+          title: '手動登入',
+          onLoginResult: (success) {
+            if (success) {
+              Navigator.of(context).pop(NTUSTLoginStatus.success);
+            } else {
+              Navigator.of(context).pop(NTUSTLoginStatus.fail);
+            }
+          },
         ),
       ),
     );
@@ -135,6 +147,12 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
       MaterialPageRoute(
         builder: (context) => ManualLoginWebViewScreen(
           initialUrl: _scoreQueryUrl,
+          title: '成績查詢',
+          onLoginResult: (success) {
+            if (success) {
+              Navigator.of(context).pop();
+            }
+          },
         ),
       ),
     );
@@ -190,16 +208,47 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
     });
 
     try {
-      final cookieManager = CookieManager.instance();
-      final cookies = await cookieManager.getCookies(url: WebUri(NTUSTConnector.ntustLoginUrl));
-      
       final StringBuffer cookieText = StringBuffer();
-      cookieText.writeln('目前的 Cookies:');
-      for (var cookie in cookies) {
-        cookieText.writeln('- ${cookie.name}: ${cookie.value}');
-        cookieText.writeln('  Domain: ${cookie.domain}');
-        cookieText.writeln('  Expires: ${cookie.expiresDate ?? "Session"}');
-        cookieText.writeln('');
+      
+      // 獲取 WebView 的 cookies
+      cookieText.writeln('=== WebView Cookies ===');
+      final cookieManager = CookieManager.instance();
+      final webViewCookies = await cookieManager.getCookies(url: WebUri(NTUSTConnector.ntustLoginUrl));
+      
+      if (webViewCookies.isEmpty) {
+        cookieText.writeln('無 WebView Cookies\n');
+      } else {
+        for (var cookie in webViewCookies) {
+          cookieText.writeln('- ${cookie.name}: ${cookie.value}');
+          cookieText.writeln('  Domain: ${cookie.domain}');
+          cookieText.writeln('  Path: ${cookie.path}');
+          cookieText.writeln('  Expires: ${cookie.expiresDate ?? "Session"}');
+          cookieText.writeln('  Secure: ${cookie.isSecure}');
+          cookieText.writeln('  HttpOnly: ${cookie.isHttpOnly}');
+          cookieText.writeln('');
+        }
+      }
+
+      // 獲取 DioConnector 的 cookies
+      cookieText.writeln('\n=== DioConnector Cookies ===');
+      final cookieJar = DioConnector.instance.cookiesManager;
+      if (cookieJar != null) {
+        final dioCookies = await cookieJar.loadForRequest(Uri.parse(NTUSTConnector.ntustLoginUrl));
+        if (dioCookies.isEmpty) {
+          cookieText.writeln('無 DioConnector Cookies');
+        } else {
+          for (var cookie in dioCookies) {
+            cookieText.writeln('- ${cookie.name}: ${cookie.value}');
+            cookieText.writeln('  Domain: ${cookie.domain}');
+            cookieText.writeln('  Path: ${cookie.path}');
+            cookieText.writeln('  Expires: ${cookie.expires?.toLocal() ?? "Session"}');
+            cookieText.writeln('  Secure: ${cookie.secure}');
+            cookieText.writeln('  HttpOnly: ${cookie.httpOnly}');
+            cookieText.writeln('');
+          }
+        }
+      } else {
+        cookieText.writeln('DioConnector CookieJar 未初始化');
       }
 
       if (mounted) {

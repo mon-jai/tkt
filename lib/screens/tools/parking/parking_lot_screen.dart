@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/parking_lot_model.dart';
-import '../services/parking_lot_service.dart';
+import '../../../models/parking_lot_model.dart';
+import '../../../services/parking/parking_lot_service.dart';
 
 class ParkingLotScreen extends StatefulWidget {
   const ParkingLotScreen({super.key});

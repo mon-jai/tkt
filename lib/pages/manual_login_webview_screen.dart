@@ -1,128 +1,263 @@
 // lib/ui/pages/manual_login_webview_screen.dart
 import 'dart:io' as io;
+import 'package:back_button_interceptor/back_button_interceptor.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // TODO: 修改 'tkt' 為您的專案名稱
 import 'package:tkt/connector/core/dio_connector.dart';
-import 'package:tkt/connector/ntust_connector.dart'; // 主要為了 ntustLoginUrl 和 NTUSTLoginStatus
+import 'package:tkt/connector/ntust_connector.dart';
+import 'package:tkt/debug/log/log.dart'; // 主要為了 ntustLoginUrl 和 NTUSTLoginStatus
+import 'package:html/parser.dart';
 
 class ManualLoginWebViewScreen extends StatefulWidget {
   final String initialUrl;
+  final String title;
+  final Function(bool)? onLoginResult;
+  final String? username;  // 新增：可選的用戶名
+  final String? password;  // 新增：可選的密碼
 
-  const ManualLoginWebViewScreen({super.key, required this.initialUrl});
+  const ManualLoginWebViewScreen({
+    required this.initialUrl,
+    required this.title,
+    this.onLoginResult,
+    this.username,  // 新增
+    this.password,  // 新增
+    super.key,
+  });
 
   @override
-  State<ManualLoginWebViewScreen> createState() => _ManualLoginWebViewScreenState();
+  State<StatefulWidget> createState() => _ManualLoginWebViewScreenState();
 }
 
 class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
-  InAppWebViewController? _webViewController;
-  final CookieManager _cookieManager = CookieManager.instance();
-  bool _isLoading = true;
-  String _pageTitle = "手動登入";
+  // Cookie 管理器實例
+  final cookieManager = CookieManager.instance();
+  final cookieJar = DioConnector.instance.cookiesManager;
+  
+  // WebView 控制器和狀態變數
+  InAppWebViewController? webView;
+  Uri url = Uri();
+  double progress = 0;
+  int onLoadStopTime = -1;
+  Uri? lastLoadUri;
+  bool firstLoad = true;
   bool _cookiesExtractedAndSaved = false;
-  static const String _studentIdKey = 'stored_student_id';
-  static const String _passwordKey = 'stored_password';
+  bool _showLoadingDialog = false;  // 新增：是否顯示載入對話框
 
-  Future<bool> _waitForElement(String selector, {int maxAttempts = 10}) async {
-    for (int i = 0; i < maxAttempts; i++) {
-      final exists = await _webViewController?.evaluateJavascript(
-        source: '''
-          (function() {
-            var element = document.querySelector('${selector}');
-            console.log('檢查元素 ${selector}: ' + (element ? '存在' : '不存在'));
-            return element != null;
-          })()
-        '''
-      );
-      
-      if (exists == true) {
-        debugPrint('找到元素: $selector');
-        return true;
-      }
-      
-      debugPrint('等待元素: $selector, 嘗試次數: ${i + 1}');
-      await Future.delayed(const Duration(milliseconds: 500));
+  @override
+  void initState() {
+    super.initState();
+    BackButtonInterceptor.add(myInterceptor);
+  }
+
+  @override
+  void dispose() {
+    BackButtonInterceptor.remove(myInterceptor);
+    super.dispose();
+  }
+
+  // 處理返回按鈕事件
+  bool myInterceptor(bool stopDefaultButtonEvent, RouteInfo info) {
+    if (onLoadStopTime >= 1) {
+      webView?.goBack();
+      onLoadStopTime -= 2;
+      return true;
     }
-    debugPrint('找不到元素: $selector, 已達最大嘗試次數');
     return false;
   }
 
+  /// 自動填入帳號密碼並點擊登入
   Future<void> _autoFillCredentials() async {
-    if (_webViewController == null) return;
-
+    if (widget.username == null || widget.password == null) return;
+    
     try {
-      debugPrint('開始自動填入流程');
-      final prefs = await SharedPreferences.getInstance();
-      final storedStudentId = prefs.getString(_studentIdKey);
-      final storedPassword = prefs.getString(_passwordKey);
-
-      if (storedStudentId != null && storedPassword != null) {
-        debugPrint('找到儲存的帳號密碼');
-        
-        // 等待頁面完全載入
-        await Future.delayed(const Duration(milliseconds: 500));
-        
-        // 檢查頁面標題，確保我們在正確的頁面
-        final pageTitle = await _webViewController?.getTitle();
-        debugPrint('當前頁面標題: $pageTitle');
-        
-        // 等待登入表單出現
-        final elementExists = await _waitForElement('form.login-form-container');
-        
-        if (elementExists) {
-          debugPrint('找到登入表單，開始填入資料');
-          final result = await _webViewController?.evaluateJavascript(
-            source: '''
-              (function() {
-                try {
-                  console.log('開始執行自動填入 JavaScript');
-                  
-                  var userIdInput = document.querySelector('input[name="UserName"]');
-                  var passwordInput = document.querySelector('input[name="Password"]');
-                  var loginForm = document.querySelector('form.login-form-container');
-                  
-                  if (userIdInput && passwordInput) {
-                    console.log('開始填入帳號密碼');
-                    
-                    userIdInput.value = "$storedStudentId";
-                    passwordInput.value = "$storedPassword";
-                    
-                    userIdInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    
-                    console.log('帳號密碼已填入');
-                    
-                    if (typeof grecaptcha !== 'undefined' && grecaptcha) {
-                      console.log('發現 reCAPTCHA，執行驗證');
-                      grecaptcha.execute();
-                    } else {
-                      console.log('沒有發現 reCAPTCHA，嘗試直接提交表單');
-                      if (loginForm) {
-                        loginForm.submit();
-                      }
-                    }
-                    return true;
-                  }
-                  console.log('無法找到必要的表單元素');
-                  return false;
-                } catch (e) {
-                  console.error('自動填入過程發生錯誤:', e);
-                  return false;
-                }
-              })()
-            '''
-          );
-          debugPrint('JavaScript 執行結果: $result');
-        } else {
-          debugPrint('等待登入表單元素超時');
-        }
-      } else {
-        debugPrint('沒有找到儲存的帳號密碼');
+      Log.d('開始自動填入帳號密碼');
+      await webView?.evaluateJavascript(
+        source: 'document.getElementsByName("UserName")[0].value = "${widget.username}";'
+      );
+      await webView?.evaluateJavascript(
+        source: 'document.getElementsByName("Password")[0].value = "${widget.password}";'
+      );
+      await webView?.evaluateJavascript(
+        source: 'document.getElementById("btnLogIn").click();'
+      );
+      Log.d('自動填入完成並點擊登入按鈕');
+      
+      setState(() {
+        _showLoadingDialog = true;
+      });
+      
+      // 5秒後自動隱藏載入對話框
+      await Future.delayed(const Duration(seconds: 5));
+      if (mounted) {
+        setState(() {
+          _showLoadingDialog = false;
+        });
       }
     } catch (e) {
-      debugPrint('自動填入失敗: $e');
+      Log.e('自動填入過程發生錯誤：$e');
+    }
+  }
+
+  /// 檢查登入結果
+  Future<void> _checkLoginResult() async {
+    try {
+      String? result = await webView?.getHtml();
+      if (result == null) return;
+      
+      var tagNode = parse(result);
+      var nodes = tagNode.getElementsByClassName("validation-summary-errors");
+      
+      if (nodes.length == 1) {
+        // 登入失敗
+        Log.d('登入失敗：${nodes[0].text.replaceAll("\\n", "")}');
+        widget.onLoginResult?.call(false);
+        return;
+      }
+      
+      // 檢查並保存 cookies
+      await extractAndSaveCookies();
+    } catch (e) {
+      Log.e('檢查登入結果時發生錯誤：$e');
+      widget.onLoginResult?.call(false);
+    }
+  }
+
+  /// 將 WebView Cookie 轉換為 io.Cookie
+  /// 並設置必要的屬性
+  io.Cookie _convertToIOCookie(Cookie webViewCookie) {
+    Log.d('轉換 Cookie: ${webViewCookie.name}');
+    
+    // 創建新的 io.Cookie
+    var ioCookie = io.Cookie(webViewCookie.name, webViewCookie.value)
+      ..domain = webViewCookie.domain ?? '.ntust.edu.tw'
+      ..path = webViewCookie.path ?? '/'
+      ..secure = webViewCookie.isSecure ?? true
+      ..httpOnly = webViewCookie.isHttpOnly ?? true;
+
+    // 設置過期時間
+    if (webViewCookie.expiresDate != null) {
+      ioCookie.expires = DateTime.fromMillisecondsSinceEpoch(webViewCookie.expiresDate!);
+    }
+
+    Log.d('Cookie 轉換完成: ${ioCookie.name} = ${ioCookie.value}');
+    Log.d('  Domain: ${ioCookie.domain}');
+    Log.d('  Path: ${ioCookie.path}');
+    Log.d('  Secure: ${ioCookie.secure}');
+    Log.d('  HttpOnly: ${ioCookie.httpOnly}');
+    Log.d('  Expires: ${ioCookie.expires}');
+
+    return ioCookie;
+  }
+
+  /// 初始化並同步 Cookies
+  /// 在 WebView 首次載入時執行
+  Future<bool> initializeCookies() async {
+    Log.d('開始初始化 Cookies...');
+    
+    if (!firstLoad) {
+      Log.d('非首次載入，跳過 Cookie 初始化');
+      return true;
+    }
+    
+    firstLoad = false;
+    try {
+      // 從 DioConnector 讀取已存在的 cookies
+      final cookies = await cookieJar?.loadForRequest(Uri.parse(widget.initialUrl)) ?? [];
+      Log.d('從 DioConnector 讀取到 ${cookies.length} 個 Cookies');
+
+      // 清除 WebView 現有的 cookies
+      await cookieManager.deleteAllCookies();
+      Log.d('已清除 WebView 現有的 Cookies');
+
+      // 獲取 WebView 當前的 cookies（用於檢查）
+      var existCookies = await cookieManager.getCookies(url: WebUri(widget.initialUrl));
+      final cookiesName = existCookies.map((e) => e.name).toList();
+      Log.d('WebView 現有的 Cookie 名稱: $cookiesName');
+
+      // 將 DioConnector 的 cookies 注入到 WebView
+      for (var cookie in cookies) {
+        if (!cookiesName.contains(cookie.name)) {
+          Log.d('注入 Cookie: ${cookie.name}');
+          cookiesName.add(cookie.name);
+          await cookieManager.setCookie(
+            url: WebUri(widget.initialUrl),
+            name: cookie.name,
+            value: cookie.value,
+            domain: cookie.domain,
+            path: cookie.path ?? "/",
+            maxAge: cookie.maxAge,
+            isSecure: cookie.secure,
+            isHttpOnly: cookie.httpOnly,
+          );
+        }
+      }
+      
+      Log.d('Cookie 初始化完成');
+      return true;
+    } catch (e) {
+      Log.e('Cookie 初始化失敗: $e');
+      return false;
+    }
+  }
+
+  /// 從 WebView 提取 Cookies 並保存到 DioConnector
+  Future<void> extractAndSaveCookies() async {
+    if (_cookiesExtractedAndSaved || webView == null || cookieJar == null) return;
+
+    try {
+      Log.d('開始從 WebView 提取 Cookies...');
+      
+      // 獲取當前頁面的所有 cookies
+      final currentUrl = await webView!.getUrl();
+      if (currentUrl == null) {
+        Log.d('無法獲取當前 URL，停止提取 Cookies');
+        return;
+      }
+
+      final cookies = await cookieManager.getCookies(url: currentUrl);
+      Log.d('從 WebView 獲取到 ${cookies.length} 個 Cookies');
+
+      // 轉換並過濾需要的 cookies
+      List<io.Cookie> ioCookies = [];
+      for (var cookie in cookies) {
+        // 只保存特定的 cookies
+        if ([".ASPXAUTH", "ntustjwtsecret", "ntustsecret"].contains(cookie.name)) {
+          var ioCookie = _convertToIOCookie(cookie);
+          ioCookies.add(ioCookie);
+          Log.d('已轉換並添加 Cookie: ${cookie.name}');
+        }
+      }
+
+      if (ioCookies.isNotEmpty) {
+        Log.d('準備保存 ${ioCookies.length} 個 Cookies 到 DioConnector');
+        
+        // 清除舊的 cookies
+        await cookieJar.deleteAll();
+        Log.d('已清除 DioConnector 中的舊 Cookies');
+
+        // 保存新的 cookies
+        await cookieJar.saveFromResponse(currentUrl, ioCookies);
+        Log.d('已保存新的 Cookies 到 DioConnector');
+
+        // 驗證保存是否成功
+        final savedCookies = await cookieJar.loadForRequest(currentUrl);
+        Log.d('驗證：從 DioConnector 讀取到 ${savedCookies.length} 個 Cookies');
+        for (var cookie in savedCookies) {
+          Log.d('- ${cookie.name}: ${cookie.value}');
+        }
+
+        _cookiesExtractedAndSaved = true;
+        widget.onLoginResult?.call(true);
+      } else {
+        Log.d('沒有找到需要保存的 Cookies');
+        widget.onLoginResult?.call(false);
+      }
+    } catch (e) {
+      Log.e('提取和保存 Cookies 時發生錯誤: $e');
+      widget.onLoginResult?.call(false);
     }
   }
 
@@ -130,111 +265,114 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_pageTitle),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              debugPrint('手動重新執行自動填入');
-              await _autoFillCredentials();
-            },
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(NTUSTLoginStatus.success);
-            },
-            child: const Text('完成', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+        title: Text(widget.title),
+        actions: actionList,
       ),
-      body: Stack(
-        children: [
-          InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
-            initialSettings: InAppWebViewSettings(
-              useShouldOverrideUrlLoading: true,
-              mediaPlaybackRequiresUserGesture: false,
-              javaScriptEnabled: true,
-              useHybridComposition: true,
-              allowsInlineMediaPlayback: true,
-            ),
-            onWebViewCreated: (controller) {
-              _webViewController = controller;
-            },
-            onLoadStart: (controller, url) {
-              if (mounted) setState(() => _isLoading = true);
-            },
-            onLoadStop: (controller, url) async {
-              if (mounted) {
-                setState(() {
-                  _isLoading = false;
-                  _pageTitle = url?.toString() ?? "手動登入";
-                });
-                await _autoFillCredentials();
-              }
-            },
-            onProgressChanged: (controller, progress) {
-              if (progress == 100 && mounted) {
-                setState(() => _isLoading = false);
-              } else if (mounted && progress < 100 && !_isLoading) {
-                setState(() => _isLoading = true);
-              }
-            },
-            shouldOverrideUrlLoading: (controller, navigationAction) async {
-              return NavigationActionPolicy.ALLOW;
-            },
-          ),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator()),
-        ],
+      body: FutureBuilder<bool>(
+        future: initializeCookies(),
+        builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+          if (snapshot.hasData) {
+            return SafeArea(
+              child: Stack(
+                children: [
+                  Column(
+                    children: <Widget>[
+                      if (progress < 1.0)
+                        LinearProgressIndicator(value: progress),
+                      Expanded(
+                        child: InAppWebView(
+                          initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
+                          initialSettings: InAppWebViewSettings(
+                            useHybridComposition: true,
+                            useOnDownloadStart: true,
+                          ),
+                          onWebViewCreated: (InAppWebViewController controller) {
+                            webView = controller;
+                          },
+                          onLoadStart: (InAppWebViewController controller, Uri? url) {
+                            setState(() {
+                              if (lastLoadUri != url) {
+                                onLoadStopTime++;
+                              }
+                              lastLoadUri = url;
+                              this.url = url!;
+                            });
+                          },
+                          onLoadStop: (InAppWebViewController controller, Uri? url) async {
+                            if (url != null) {
+                              setState(() {
+                                this.url = url;
+                              });
+                              
+                              // 如果是登入頁面且有帳號密碼，自動填入
+                              if (url.toString() == widget.initialUrl && 
+                                  widget.username != null && 
+                                  widget.password != null) {
+                                await _autoFillCredentials();
+                              }
+                              
+                              // 檢查登入結果
+                              await _checkLoginResult();
+                            }
+                          },
+                          onProgressChanged: (InAppWebViewController controller, int progress) {
+                            setState(() {
+                              this.progress = progress / 100;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_showLoadingDialog)
+                    Container(
+                      color: Colors.black54,
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          } else {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+        },
       ),
     );
   }
 
-  Future<void> _extractAndSaveCookiesAndPop(NTUSTLoginStatus status) async {
-    if (_cookiesExtractedAndSaved) return; // 防止重複執行
-
-    if (status == NTUSTLoginStatus.success && _webViewController != null) {
-      try {
-        // 嘗試從當前 WebView 的 URL (或特定目標 URL) 提取 Cookies
-        final WebUri currentWebUri = WebUri.uri(await _webViewController!.getUrl() ?? WebUri(NTUSTConnector.ntustLoginUrl));
-        final List<Cookie> cookies = await _cookieManager.getCookies(url: currentWebUri);
-        final cookieJar = DioConnector.instance.cookiesManager; // 您的 DioConnector 的 CookieJar
-
-        if (cookieJar != null) {
-          List<io.Cookie> ioCookies = [];
-          bool addedRelevantCookie = false;
-          for (var c in cookies) {
-            // logPrint("WebView Cookie: ${c.name}=${c.value}; domain=${c.domain}; path=${c.path}");
-            // 您需要根據實際登入成功後臺科大設定的關鍵 Cookie 名稱來篩選
-            if ([".ASPXAUTH", "ntustjwtsecret", "ntustsecret", "ASP.NET_SessionId"] // 加入更多可能的 session cookie
-                .contains(c.name)) {
-              io.Cookie k = io.Cookie(c.name, c.value as String); // 假設 value 是 String
-              k.domain = c.domain ?? ".ntust.edu.tw"; // 使用 WebView cookie 的 domain 或預設
-              k.path = c.path ?? "/";
-              ioCookies.add(k);
-              addedRelevantCookie = true;
-            }
+  List<Widget> get actionList {
+    return [
+      IconButton(
+        icon: const Icon(CupertinoIcons.left_chevron, size: 18),
+        splashRadius: 16,
+        onPressed: () async {
+          if (webView != null) {
+            await webView?.goBack();
           }
-
-          if (addedRelevantCookie) {
-            await cookieJar.deleteAll(); // 先清除舊的，避免衝突
-            await cookieJar.saveFromResponse(currentWebUri, ioCookies); // 保存新的
-            // logPrint("Cookies extracted and saved to DioConnector's CookieJar.");
-            _cookiesExtractedAndSaved = true; // 標記已處理
-            if (mounted) Navigator.of(context).pop(NTUSTLoginStatus.success);
-            return;
-          } else {
-            // logPrint("No relevant cookies found in WebView to save.");
+        },
+      ),
+      IconButton(
+        icon: const Icon(CupertinoIcons.right_chevron, size: 18),
+        splashRadius: 16,
+        onPressed: () async {
+          if (webView != null) {
+            await webView?.goForward();
           }
-        } else {
-          // logPrint("DioConnector's CookieJar is null.");
-        }
-      } catch (e) {
-        // logException(e, null, reason: "Error extracting/saving cookies from WebView");
-      }
-    }
-    // 如果沒有成功提取並保存，或者狀態不是 success，則返回失敗
-    if (mounted) Navigator.of(context).pop(NTUSTLoginStatus.fail);
+        },
+      ),
+      IconButton(
+        icon: const Icon(CupertinoIcons.refresh, size: 18),
+        splashRadius: 16,
+        onPressed: () async {
+          if (webView != null) {
+            await webView?.reload();
+          }
+        },
+      ),
+    ];
   }
 }

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tkt/pages/ntust_test_page.dart';
 import 'package:tkt/screens/account_storage_page.dart';
-import '../providers/theme_provider.dart';
-import 'about_screen.dart';
-import 'profile_screen.dart';
-import 'auth_test_screen.dart';
+import '../../providers/theme_provider.dart';
+import '../setting/about/about_screen.dart';
+import '../setting/profile/profile_screen.dart';
+import '../auth_test_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});

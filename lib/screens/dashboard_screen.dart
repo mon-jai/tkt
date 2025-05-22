@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/announcement_provider.dart';
-import '../services/auth_service.dart';
+import '../services/login/auth_service.dart';
 import '../services/course_service.dart';
 import 'announcement_screen.dart';
 import 'campus_map_screen.dart';

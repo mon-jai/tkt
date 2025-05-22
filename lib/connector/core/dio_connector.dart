@@ -134,9 +134,10 @@ class DioConnector {
     try {
       String url = parameter.url;
       dio.interceptors.add(CookieManager(_cookieJar));
-      var response = await dio.get<Uint8List>(url, options: Options(
-        responseType: ResponseType.bytes,
-      ));
+      var response = await dio.get<Uint8List>(url,
+          options: Options(
+            responseType: ResponseType.bytes,
+          ));
 
       return response.data;
     } catch (_) {
@@ -182,7 +183,8 @@ class DioConnector {
         .downloadUri(Uri.parse(url), savePath,
             onReceiveProgress: progressCallback,
             cancelToken: cancelToken,
-            options: Options(receiveTimeout: Duration.zero, headers: header)) //設置不超時
+            options:
+                Options(receiveTimeout: Duration.zero, headers: header)) //設置不超時
         .catchError((onError, stack) {
       Log.eWithStack(onError.toString(), stack);
       throw onError;

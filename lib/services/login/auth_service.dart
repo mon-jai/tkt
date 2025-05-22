@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http; // 已在上方 auth_model.dart 區域�
 import 'package:shared_preferences/shared_preferences.dart'; // 已在上方 auth_model.dart 區域導入
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // 已在上方 auth_model.dart 區域導入
 import 'package:jwt_decoder/jwt_decoder.dart'; // 已在上方 auth_model.dart 區域導入
-import '../models/auth_model.dart'; // 假設路徑
+import '../../models/auth_model.dart'; // 假設路徑
 
 // API 基礎 URL (從您提供的 AuthService 複製)
 const String _apiBaseUrl = "http://218.161.51.17:5001"; 

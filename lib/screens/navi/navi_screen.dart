@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:tkt/screens/tools_screen.dart';
-import 'dashboard_screen.dart';
-import 'discussion_screen.dart';
+import 'package:tkt/screens/navi/tools_screen.dart';
+import '../dashboard_screen.dart';
+import '../discussion_screen.dart';
 import 'settings_screen.dart';
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+class NaviScreen extends StatefulWidget {
+  const NaviScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<NaviScreen> createState() => _NaviScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _NaviScreenState extends State<NaviScreen> {
   int _selectedIndex = 0;
 
   // 使用簡單的小部件列表，避免初始化複雜的頁面
