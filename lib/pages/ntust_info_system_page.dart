@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tkt/connector/ntust_connector.dart';
 import 'package:tkt/models/ntust/ap_tree_json.dart';
-import 'package:tkt/pages/ntust_login_webview.dart';
+import 'package:tkt/pages/manual_login_webview_screen.dart';
 import 'package:tkt/debug/log/log.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -61,6 +61,8 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
           _errorMessage = '載入失敗：$e';
           _isLoading = false;
         });
+
+        
       }
     }
   }
@@ -69,12 +71,11 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
     try {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => NTUSTLoginWebView(
+          builder: (context) => ManualLoginWebViewScreen(
             initialUrl: url,
             title: title,
-            showNavigationButtons: true,
-            username: _username,  // 傳入使用者名稱
-            password: _password,  // 傳入密碼
+            username: _username,
+            password: _password,
             onLoginResult: (success) {
               if (!success) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -196,4 +197,4 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
       ),
     );
   }
-} 
+}

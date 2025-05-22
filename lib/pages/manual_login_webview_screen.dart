@@ -34,7 +34,7 @@ class ManualLoginWebViewScreen extends StatefulWidget {
 class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
   // Cookie 管理器實例
   final cookieManager = CookieManager.instance();
-  final cookieJar = DioConnector.instance.cookiesManager;
+  late final cookieJar = DioConnector.instance.cookiesManager;
   
   // WebView 控制器和狀態變數
   InAppWebViewController? webView;
@@ -44,18 +44,29 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
   Uri? lastLoadUri;
   bool firstLoad = true;
   bool _cookiesExtractedAndSaved = false;
-  bool _showLoadingDialog = false;  // 新增：是否顯示載入對話框
+  bool _showLoadingDialog = false;
 
   @override
   void initState() {
     super.initState();
     BackButtonInterceptor.add(myInterceptor);
+    _initializeCookieJar();
   }
 
   @override
   void dispose() {
     BackButtonInterceptor.remove(myInterceptor);
     super.dispose();
+  }
+
+  Future<void> _initializeCookieJar() async {
+    try {
+      // 確保 DioConnector 已經初始化
+      await DioConnector.instance.init();
+      Log.d('Cookie jar 初始化完成');
+    } catch (e) {
+      Log.e('Cookie jar 初始化失敗: $e');
+    }
   }
 
   // 處理返回按鈕事件
@@ -68,22 +79,120 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
     return false;
   }
 
+  // 新增：從 SharedPreferences 載入儲存的帳號密碼
+  Future<void> _loadStoredCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedUsername = prefs.getString('stored_student_id');
+      final storedPassword = prefs.getString('stored_password');
+      
+      if (storedUsername != null && storedPassword != null) {
+        Log.d('已從本地儲存讀取帳號密碼');
+        await _autoFillWithCredentials(storedUsername, storedPassword);
+      } 
+    } catch (e) {
+      Log.e('載入儲存的帳號密碼時發生錯誤：$e');
+    }
+  }
+
+  /// 檢查是否有 reCAPTCHA
+  Future<bool> _hasReCaptcha() async {
+    try {
+      String? html = await webView?.getHtml();
+      if (html == null) return false;
+      
+      return html.contains('g-recaptcha') || 
+             html.contains('grecaptcha') || 
+             html.contains('google.com/recaptcha');
+    } catch (e) {
+      Log.e('檢查 reCAPTCHA 時發生錯誤：$e');
+      return false;
+    }
+  }
+
+  /// 點擊登入按鈕
+  Future<void> _clickLoginButton(String loginType) async {
+    try {
+      if (loginType == 'sso') {
+        await webView?.evaluateJavascript(
+          source: 'document.getElementById("btnLogIn").click();'
+        );
+      } else {
+        await webView?.evaluateJavascript(
+          source: 'document.getElementById("loginButton2").click();'
+        );
+      }
+      Log.d('點擊登入按鈕');
+    } catch (e) {
+      Log.e('點擊登入按鈕時發生錯誤：$e');
+    }
+  }
+
   /// 自動填入帳號密碼並點擊登入
-  Future<void> _autoFillCredentials() async {
-    if (widget.username == null || widget.password == null) return;
-    
+  Future<void> _autoFillWithCredentials(String username, String password) async {
     try {
       Log.d('開始自動填入帳號密碼');
-      await webView?.evaluateJavascript(
-        source: 'document.getElementsByName("UserName")[0].value = "${widget.username}";'
-      );
-      await webView?.evaluateJavascript(
-        source: 'document.getElementsByName("Password")[0].value = "${widget.password}";'
-      );
-      await webView?.evaluateJavascript(
-        source: 'document.getElementById("btnLogIn").click();'
-      );
-      Log.d('自動填入完成並點擊登入按鈕');
+      
+      // 檢查頁面類型並使用對應的元素選擇器
+      String? html = await webView?.getHtml();
+      if (html == null) return;
+
+      String loginType = '';
+      if (html.contains('name="UserName"')) {
+        // SSO 登入頁面
+        await webView?.evaluateJavascript(
+          source: 'document.getElementsByName("UserName")[0].value = "$username";'
+        );
+        await webView?.evaluateJavascript(
+          source: 'document.getElementsByName("Password")[0].value = "$password";'
+        );
+        loginType = 'sso';
+        Log.d('SSO 登入頁面');
+      } else {
+        // 資訊系統登入頁面
+        await webView?.evaluateJavascript(
+          source: 'document.getElementsByName("Ecom_User_ID")[0].value = "$username";'
+        );
+        await webView?.evaluateJavascript(
+          source: 'document.getElementsByName("Ecom_Password")[0].value = "$password";'
+        );
+        loginType = 'info';
+        Log.d('資訊系統登入頁面');
+      }
+      
+      Log.d('自動填入完成，準備點擊登入按鈕');
+      
+      // 點擊登入按鈕
+      await _clickLoginButton(loginType);
+      
+      // 等待頁面載入（等待可能的 reCAPTCHA）
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // 檢查是否出現 reCAPTCHA
+      bool hasRecaptcha = await _hasReCaptcha();
+      if (hasRecaptcha) {
+        Log.d('檢測到 reCAPTCHA，等待使用者驗證');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('請完成圖片驗證，驗證完成後會自動繼續登入'),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+        
+        // 設定一個定時器，每隔一段時間檢查 reCAPTCHA 是否已完成
+        bool captchaCompleted = false;
+        while (!captchaCompleted) {
+          await Future.delayed(const Duration(seconds: 2));
+          captchaCompleted = !await _hasReCaptcha();
+          if (captchaCompleted) {
+            Log.d('reCAPTCHA 驗證完成，重新點擊登入');
+            await _clickLoginButton(loginType);
+            break;
+          }
+        }
+      }
       
       setState(() {
         _showLoadingDialog = true;
@@ -101,18 +210,35 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
     }
   }
 
+  /// 自動填入帳號密碼並點擊登入
+  Future<void> _autoFillCredentials() async {
+    if (widget.username == null || widget.password == null) {
+      // 如果沒有傳入帳號密碼，嘗試從儲存中讀取
+      final prefs = await SharedPreferences.getInstance();
+      final storedUsername = prefs.getString('stored_student_id');
+      final storedPassword = prefs.getString('stored_password');
+      
+      if (storedUsername != null && storedPassword != null) {
+        await _autoFillWithCredentials(storedUsername, storedPassword);
+      }
+      return;
+    }
+    
+    await _autoFillWithCredentials(widget.username!, widget.password!);
+  }
+
   /// 檢查登入結果
   Future<void> _checkLoginResult() async {
     try {
       String? result = await webView?.getHtml();
       if (result == null) return;
       
-      var tagNode = parse(result);
-      var nodes = tagNode.getElementsByClassName("validation-summary-errors");
-      
-      if (nodes.length == 1) {
+      // 檢查是否有錯誤訊息
+      if (result.contains('validation-summary-errors') || 
+          result.contains('error-message') ||
+          result.contains('alert-danger')) {
         // 登入失敗
-        Log.d('登入失敗：${nodes[0].text.replaceAll("\\n", "")}');
+        Log.d('登入失敗');
         widget.onLoginResult?.call(false);
         return;
       }
@@ -126,34 +252,23 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
   }
 
   /// 將 WebView Cookie 轉換為 io.Cookie
-  /// 並設置必要的屬性
   io.Cookie _convertToIOCookie(Cookie webViewCookie) {
     Log.d('轉換 Cookie: ${webViewCookie.name}');
     
-    // 創建新的 io.Cookie
     var ioCookie = io.Cookie(webViewCookie.name, webViewCookie.value)
       ..domain = webViewCookie.domain ?? '.ntust.edu.tw'
       ..path = webViewCookie.path ?? '/'
       ..secure = webViewCookie.isSecure ?? true
       ..httpOnly = webViewCookie.isHttpOnly ?? true;
 
-    // 設置過期時間
     if (webViewCookie.expiresDate != null) {
       ioCookie.expires = DateTime.fromMillisecondsSinceEpoch(webViewCookie.expiresDate!);
     }
-
-    Log.d('Cookie 轉換完成: ${ioCookie.name} = ${ioCookie.value}');
-    Log.d('  Domain: ${ioCookie.domain}');
-    Log.d('  Path: ${ioCookie.path}');
-    Log.d('  Secure: ${ioCookie.secure}');
-    Log.d('  HttpOnly: ${ioCookie.httpOnly}');
-    Log.d('  Expires: ${ioCookie.expires}');
 
     return ioCookie;
   }
 
   /// 初始化並同步 Cookies
-  /// 在 WebView 首次載入時執行
   Future<bool> initializeCookies() async {
     Log.d('開始初始化 Cookies...');
     
@@ -164,6 +279,12 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
     
     firstLoad = false;
     try {
+      // 等待 cookieJar 初始化完成
+      if (cookieJar == null) {
+        Log.d('等待 Cookie jar 初始化...');
+        await _initializeCookieJar();
+      }
+
       // 從 DioConnector 讀取已存在的 cookies
       final cookies = await cookieJar?.loadForRequest(Uri.parse(widget.initialUrl)) ?? [];
       Log.d('從 DioConnector 讀取到 ${cookies.length} 個 Cookies');
@@ -210,7 +331,6 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
     try {
       Log.d('開始從 WebView 提取 Cookies...');
       
-      // 獲取當前頁面的所有 cookies
       final currentUrl = await webView!.getUrl();
       if (currentUrl == null) {
         Log.d('無法獲取當前 URL，停止提取 Cookies');
@@ -220,11 +340,10 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
       final cookies = await cookieManager.getCookies(url: currentUrl);
       Log.d('從 WebView 獲取到 ${cookies.length} 個 Cookies');
 
-      // 轉換並過濾需要的 cookies
       List<io.Cookie> ioCookies = [];
       for (var cookie in cookies) {
         // 只保存特定的 cookies
-        if ([".ASPXAUTH", "ntustjwtsecret", "ntustsecret"].contains(cookie.name)) {
+        if ([".ASPXAUTH", "ntustjwtsecret", "ntustsecret", "ASP.NET_SessionId"].contains(cookie.name)) {
           var ioCookie = _convertToIOCookie(cookie);
           ioCookies.add(ioCookie);
           Log.d('已轉換並添加 Cookie: ${cookie.name}');
@@ -242,13 +361,6 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
         await cookieJar.saveFromResponse(currentUrl, ioCookies);
         Log.d('已保存新的 Cookies 到 DioConnector');
 
-        // 驗證保存是否成功
-        final savedCookies = await cookieJar.loadForRequest(currentUrl);
-        Log.d('驗證：從 DioConnector 讀取到 ${savedCookies.length} 個 Cookies');
-        for (var cookie in savedCookies) {
-          Log.d('- ${cookie.name}: ${cookie.value}');
-        }
-
         _cookiesExtractedAndSaved = true;
         widget.onLoginResult?.call(true);
       } else {
@@ -258,6 +370,24 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
     } catch (e) {
       Log.e('提取和保存 Cookies 時發生錯誤: $e');
       widget.onLoginResult?.call(false);
+    }
+  }
+
+  /// 檢查是否為登入頁面
+  Future<bool> _checkIsLoginPage() async {
+    try {
+      String? html = await webView?.getHtml();
+      if (html == null) return false;
+
+      // 檢查是否包含登入表單的特徵
+      return html.contains('name="UserName"') || // SSO 登入
+             html.contains('name="Ecom_User_ID"') || // 資訊系統登入
+             html.contains('name="Ecom_Password"') ||
+             html.contains('id="btnLogIn"') ||
+             html.contains('id="loginButton2"');
+    } catch (e) {
+      Log.e('檢查登入頁面時發生錯誤：$e');
+      return false;
     }
   }
 
@@ -304,11 +434,10 @@ class _ManualLoginWebViewScreenState extends State<ManualLoginWebViewScreen> {
                                 this.url = url;
                               });
                               
-                              // 如果是登入頁面且有帳號密碼，自動填入
-                              if (url.toString() == widget.initialUrl && 
-                                  widget.username != null && 
-                                  widget.password != null) {
-                                await _autoFillCredentials();
+                              // 檢查是否為登入頁面
+                              bool isLoginPage = await _checkIsLoginPage();
+                              if (isLoginPage) {
+                                await _loadStoredCredentials();
                               }
                               
                               // 檢查登入結果

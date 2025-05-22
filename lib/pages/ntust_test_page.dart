@@ -20,11 +20,13 @@ class NtustConnectorTestPage extends StatefulWidget {
 class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  InAppWebViewController? webView;  // 添加 webView 變數
 
   bool _isLoading = false;
   String _statusMessage = '';
   String _cookieInfo = '';
   String _sessionInfo = '';
+  List<APTreeJson> _subSystems = [];
 
   late Future<void> _initializationFuture;
 
@@ -102,37 +104,49 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
 
   Future<void> _navigateToManualLogin() async {
     if (!mounted) return;
-    setState(() {
-      _statusMessage = '轉至手動登入頁面...';
-      _isLoading = true;
-    });
+    
+    try {
+      setState(() {
+        _statusMessage = '轉至手動登入頁面...';
+        _isLoading = true;
+      });
 
-    final result = await Navigator.of(context).push<NTUSTLoginStatus>(
-      MaterialPageRoute(
-        builder: (context) => ManualLoginWebViewScreen(
-          initialUrl: NTUSTConnector.ntustLoginUrl,
-          title: '手動登入',
-          onLoginResult: (success) {
-            if (success) {
-              Navigator.of(context).pop(NTUSTLoginStatus.success);
-            } else {
-              Navigator.of(context).pop(NTUSTLoginStatus.fail);
-            }
-          },
+      final result = await Navigator.of(context).push<NTUSTLoginStatus>(
+        MaterialPageRoute(
+          builder: (context) => ManualLoginWebViewScreen(
+            initialUrl: NTUSTConnector.ntustLoginUrl,
+            title: '手動登入',
+            username: _usernameController.text,  // 加入自動填入帳號
+            password: _passwordController.text,  // 加入自動填入密碼
+            onLoginResult: (success) {
+              if (success) {
+                Navigator.of(context).pop(NTUSTLoginStatus.success);
+              }
+              // 不要在失敗時立即 pop，讓使用者可以重試
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-      _statusMessage = result == NTUSTLoginStatus.success ? '手動登入成功' : '手動登入未完成或失敗';
-    });
+      setState(() {
+        _isLoading = false;
+        _statusMessage = result == NTUSTLoginStatus.success ? '手動登入成功' : '手動登入未完成';
+      });
 
-    if (result == NTUSTLoginStatus.success) {
-      await _updateCookieInfo();
-      await _updateSessionInfo();
+      if (result == NTUSTLoginStatus.success) {
+        await _updateCookieInfo();
+        await _updateSessionInfo();
+      }
+    } catch (e) {
+      Log.e('手動登入時發生錯誤：$e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = '手動登入時發生錯誤：$e';
+        });
+      }
     }
   }
 
@@ -170,7 +184,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
-      _statusMessage = '正在清除所有 Cookies...';
+      _statusMessage = '正在清除所有 Cookies 和 Session...';
     });
 
     try {
@@ -180,15 +194,16 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
       
       if (mounted) {
         setState(() {
-          _statusMessage = '已清除所有 Cookies';
+          _statusMessage = '已清除所有 Cookies 和 Session';
           _cookieInfo = '';
           _sessionInfo = '';
+          _subSystems = [];  // 清空子系統列表
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _statusMessage = '清除 Cookies 時發生錯誤：$e';
+          _statusMessage = '清除 Cookies 和 Session 時發生錯誤：$e';
         });
       }
     } finally {
@@ -197,6 +212,7 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
           _isLoading = false;
         });
         await _updateCookieInfo();
+        await _updateSessionInfo();  // 更新 session 資訊
       }
     }
   }
