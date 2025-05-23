@@ -3,6 +3,7 @@ import 'package:tkt/models/score/course_score.dart';
 import 'package:tkt/models/score/credit_summary.dart';
 import 'package:tkt/models/score/ranking_data.dart';
 import 'package:tkt/services/score_service.dart';
+import 'package:tkt/pages/webview_screen.dart';
 
 class ScorePage extends StatefulWidget {
   const ScorePage({Key? key}) : super(key: key);
@@ -17,6 +18,7 @@ class _ScorePageState extends State<ScorePage> {
   CreditSummary? _creditSummary;
   bool _isLoading = true;
   String? _error;
+  bool _showWebView = false;
 
   @override
   void initState() {
@@ -25,21 +27,37 @@ class _ScorePageState extends State<ScorePage> {
   }
 
   Future<void> _fetchScores() async {
-    try {
-      final data = await ScoreService.fetchScores();
-      setState(() {
-        _rankingData = data['rankingData'] as List<RankingData>;
-        _courseScores = data['courseScores'] as List<CourseScore>;
-        _creditSummary = data['creditSummary'] as CreditSummary?;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
+  // !! 關鍵修改 !!
+  // 開始抓取前，設定為載入中，並清除舊的錯誤/WebView狀態
+  setState(() {
+    _isLoading = true;
+    _error = null;
+    _showWebView = false; // 確保 WebView 也隱藏
+  });
+
+  try {
+    final data = await ScoreService.fetchScores();
+    // 檢查 Widget 是否還存在 (好習慣)
+    if (!mounted) return;
+    setState(() {
+      _rankingData = data['rankingData'] as List<RankingData>;
+      _courseScores = data['courseScores'] as List<CourseScore>;
+      _creditSummary = data['creditSummary'] as CreditSummary?;
+      _isLoading = false;
+      // _showWebView = false; // 這行已移到開頭
+    });
+  } catch (e) {
+    // 檢查 Widget 是否還存在 (好習慣)
+    if (!mounted) return;
+    setState(() {
+      _error = e.toString();
+      _isLoading = false;
+      // 如果錯誤，通常會顯示 WebView 或錯誤訊息
+      // 根據你的邏輯，這裡顯示 WebView 似乎是為了重新登入
+      _showWebView = true;
+    });
   }
+}
 
   void _showSemesterDetails(BuildContext context, String semester, List<CourseScore> scores) {
     showModalBottomSheet(
@@ -130,24 +148,55 @@ class _ScorePageState extends State<ScorePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('成績查詢'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchScores,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text('錯誤：$_error'))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildRankingSection(),
-                      const SizedBox(height: 32),
-                      _buildCreditSummarySection(),
-                      const SizedBox(height: 32),
-                      _buildCourseScoreSection(),
-                    ],
-                  ),
-                ),
+          : _showWebView
+              ? WebViewScreen(
+                  initialUrl: 'https://stuinfosys.ntust.edu.tw/StuScoreQueryServ/StuScoreQuery',
+                  title: '成績查詢系統',
+                  onLoginResult: (success) async {
+                    if (success) {
+                      _fetchScores();
+                    }
+                  },
+                )
+              : _error != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            '校園系統登入失敗或查詢失敗',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _fetchScores,
+                            child: const Text('重試'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRankingSection(),
+                          const SizedBox(height: 32),
+                          _buildCreditSummarySection(),
+                          const SizedBox(height: 32),
+                          _buildCourseScoreSection(),
+                        ],
+                      ),
+                    ),
     );
   }
 
