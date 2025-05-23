@@ -12,6 +12,14 @@
             android:name="com.google.android.webview"
             android:value="true" />
             
+        <!-- WebView 配置 -->
+        <meta-data
+            android:name="android.webkit.WebView.EnableSafeBrowsing"
+            android:value="true" />
+        <meta-data
+            android:name="android.webkit.WebView.MetricsOptOut"
+            android:value="true" />
+            
         <activity
             android:name=".MainActivity"
             android:exported="true"

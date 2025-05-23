@@ -68,6 +68,7 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
   }
 
   Future<void> _openSystemUrl(String url, String title) async {
+    if (!mounted) return;
     try {
       await Navigator.of(context).push(
         MaterialPageRoute(
