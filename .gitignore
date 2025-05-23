@@ -46,3 +46,5 @@ app.*.map.json
 /windows
 /linux
 /windows/flutter
+/windows
+/linux
