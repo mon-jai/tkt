@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:tkt/models/score/course_score.dart';
 import 'package:tkt/models/score/credit_summary.dart';
 import 'package:tkt/models/score/ranking_data.dart';
 import 'package:tkt/services/score_service.dart';
 import 'package:tkt/pages/webview_screen.dart';
+import 'package:tkt/tasks/ntust_login_task.dart';
+import 'package:tkt/connector/ntust_connector.dart';
+import 'package:tkt/connector/check_login.dart';
+import 'package:tkt/widgets/ntust_login_prompt_dialog.dart';
+import 'package:tkt/debug/log/log.dart';
 
 class ScorePage extends StatefulWidget {
   const ScorePage({Key? key}) : super(key: key);
@@ -13,51 +20,185 @@ class ScorePage extends StatefulWidget {
 }
 
 class _ScorePageState extends State<ScorePage> {
+  // 成績儲存的鍵名
+  static const String _rankingDataKey = 'cached_ranking_data';
+  static const String _courseScoresKey = 'cached_course_scores';
+  static const String _creditSummaryKey = 'cached_credit_summary';
+  static const String _lastUpdateTimeKey = 'scores_last_update_time';
+  
   List<RankingData> _rankingData = [];
   List<CourseScore> _courseScores = [];
   CreditSummary? _creditSummary;
   bool _isLoading = true;
   String? _error;
   bool _showWebView = false;
+  DateTime? _lastUpdateTime;
 
   @override
   void initState() {
     super.initState();
-    _fetchScores();
+    _loadCachedScores();
   }
 
+  /// 載入快取的成績資料
+  Future<void> _loadCachedScores() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // 載入快取的資料
+      final rankingJson = prefs.getStringList(_rankingDataKey);
+      final coursesJson = prefs.getStringList(_courseScoresKey);
+      final creditJson = prefs.getString(_creditSummaryKey);
+      final lastUpdateTimeString = prefs.getString(_lastUpdateTimeKey);
+      
+      if (rankingJson != null && coursesJson != null) {
+        setState(() {
+          _rankingData = rankingJson.map((json) => RankingData.fromJson(jsonDecode(json))).toList();
+          _courseScores = coursesJson.map((json) => CourseScore.fromJson(jsonDecode(json))).toList();
+          
+          if (creditJson != null) {
+            _creditSummary = CreditSummary.fromJson(jsonDecode(creditJson));
+          }
+          
+          if (lastUpdateTimeString != null) {
+            _lastUpdateTime = DateTime.parse(lastUpdateTimeString);
+          }
+          
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('載入快取成績時發生錯誤：$e');
+    }
+    
+    // 如果沒有快取資料，則嘗試獲取新資料
+    if (_rankingData.isEmpty) {
+      _fetchScores();
+    }
+  }
+
+  /// 儲存成績資料到快取
+  Future<void> _saveScoresToCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // 將資料轉換為 JSON 並儲存
+      final rankingJson = _rankingData.map((data) => jsonEncode(data.toJson())).toList();
+      final coursesJson = _courseScores.map((score) => jsonEncode(score.toJson())).toList();
+      
+      await prefs.setStringList(_rankingDataKey, rankingJson);
+      await prefs.setStringList(_courseScoresKey, coursesJson);
+      
+      if (_creditSummary != null) {
+        await prefs.setString(_creditSummaryKey, jsonEncode(_creditSummary!.toJson()));
+      }
+      
+      await prefs.setString(_lastUpdateTimeKey, DateTime.now().toIso8601String());
+      
+      print('成績已儲存到快取');
+    } catch (e) {
+      print('儲存成績到快取時發生錯誤：$e');
+    }
+  }
+
+  /// 檢查登入狀態並獲取成績
   Future<void> _fetchScores() async {
-  // !! 關鍵修改 !!
-  // 開始抓取前，設定為載入中，並清除舊的錯誤/WebView狀態
-  setState(() {
-    _isLoading = true;
-    _error = null;
-    _showWebView = false; // 確保 WebView 也隱藏
-  });
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _showWebView = false;
+    });
 
-  try {
-    final data = await ScoreService.fetchScores();
-    // 檢查 Widget 是否還存在 (好習慣)
-    if (!mounted) return;
-    setState(() {
-      _rankingData = data['rankingData'] as List<RankingData>;
-      _courseScores = data['courseScores'] as List<CourseScore>;
-      _creditSummary = data['creditSummary'] as CreditSummary?;
-      _isLoading = false;
-      // _showWebView = false; // 這行已移到開頭
-    });
-  } catch (e) {
-    // 檢查 Widget 是否還存在 (好習慣)
-    if (!mounted) return;
-    setState(() {
-      _error = e.toString();
-      _isLoading = false;
-      // 如果錯誤，通常會顯示 WebView 或錯誤訊息
-      // 根據你的邏輯，這裡顯示 WebView 似乎是為了重新登入
-      _showWebView = true;
-    });
+    // 先檢查登入狀態
+    final loginStatus = await CheckLogin.ntust_login();
+    Log.d('NTUST Login Status: ${loginStatus.toString()}');
+
+    if (loginStatus == NtustConnectorStatus.loginFail) {
+      if (!mounted) return;
+      final shouldProceedToLogin = await _showLoginPromptDialog();
+      if (shouldProceedToLogin == true) {
+        // 登入成功後重新嘗試獲取成績
+        if (!mounted) return;
+        await _fetchScoresData();
+      } else {
+        // 用戶取消登入
+        setState(() {
+          _isLoading = false;
+          _error = '需要登入才能查看成績';
+        });
+      }
+      return;
+    } else if (loginStatus == NtustConnectorStatus.unknownError) {
+      if (!mounted) return;
+      setState(() {
+        _error = '檢查登入狀態時發生未知錯誤，請稍後再試';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // 登入狀態正常，直接獲取成績
+    await _fetchScoresData();
   }
-}
+
+  /// 實際獲取成績資料的方法
+  Future<void> _fetchScoresData() async {
+    try {
+      final data = await ScoreService.fetchScores();
+      
+      if (!mounted) return;
+      setState(() {
+        _rankingData = data['rankingData'] as List<RankingData>;
+        _courseScores = data['courseScores'] as List<CourseScore>;
+        _creditSummary = data['creditSummary'] as CreditSummary?;
+        _lastUpdateTime = DateTime.now();
+        _isLoading = false;
+        _error = null;
+      });
+      
+      // 儲存到快取
+      await _saveScoresToCache();
+      
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+        _showWebView = true;
+      });
+    }
+  }
+
+  /// 顯示登入提示對話框
+  Future<bool?> _showLoginPromptDialog() {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return const NtustLoginPromptDialog();
+      },
+    );
+  }
+
+  /// 格式化日期時間顯示
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inMinutes < 1) {
+      return '剛剛';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}分鐘前';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}小時前';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}天前';
+    } else {
+      return '${dateTime.month}/${dateTime.day} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    }
+  }
 
   void _showSemesterDetails(BuildContext context, String semester, List<CourseScore> scores) {
     showModalBottomSheet(
@@ -147,11 +288,22 @@ class _ScorePageState extends State<ScorePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('成績查詢'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('成績查詢'),
+            if (_lastUpdateTime != null)
+              Text(
+                '更新：${_formatDateTime(_lastUpdateTime!)}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+              ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _fetchScores,
+            tooltip: '重新整理成績',
           ),
         ],
       ),

@@ -28,4 +28,28 @@ class RankingData {
       averageScoreHistory: double.tryParse(data['averageScoreHistory']?.toString().trim() ?? '0') ?? 0.0,
     );
   }
+
+  factory RankingData.fromJson(Map<String, dynamic> json) {
+    return RankingData(
+      semester: json['semester'] ?? '',
+      classRank: json['classRank'] ?? 0,
+      departmentRank: json['departmentRank'] ?? 0,
+      averageScore: (json['averageScore'] ?? 0.0).toDouble(),
+      classRankHistory: json['classRankHistory'] ?? 0,
+      departmentRankHistory: json['departmentRankHistory'] ?? 0,
+      averageScoreHistory: (json['averageScoreHistory'] ?? 0.0).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'semester': semester,
+      'classRank': classRank,
+      'departmentRank': departmentRank,
+      'averageScore': averageScore,
+      'classRankHistory': classRankHistory,
+      'departmentRankHistory': departmentRankHistory,
+      'averageScoreHistory': averageScoreHistory,
+    };
+  }
 }

@@ -76,14 +76,11 @@ class NTUSTConnector {
               List<io.Cookie> ioCookies = [];
               bool add = false;
               for (var i in cookies) {
-                if ([".ASPXAUTH", "ntustjwtsecret", "ntustsecret"]
-                    .contains(i.name)) {
                   io.Cookie k = io.Cookie(i.name, i.value);
                   k.domain = ".ntust.edu.tw";
                   k.path = "/";
                   ioCookies.add(k);
                   add = true;
-                }
               }
               if (add) {
                 await cookieJar.saveFromResponse(ntustLoginUri, ioCookies);

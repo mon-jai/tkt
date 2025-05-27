@@ -34,4 +34,32 @@ class CreditSummary {
       grandTotalCredits: int.tryParse(data['grandTotalCredits']?.toString().trim() ?? '0') ?? 0,
     );
   }
+
+  factory CreditSummary.fromJson(Map<String, dynamic> json) {
+    return CreditSummary(
+      earnedCredits: json['earnedCredits'] ?? 0,
+      earnedDistanceCredits: json['earnedDistanceCredits'] ?? 0,
+      totalEarnedCredits: json['totalEarnedCredits'] ?? 0,
+      inProgressCredits: json['inProgressCredits'] ?? 0,
+      inProgressDistanceCredits: json['inProgressDistanceCredits'] ?? 0,
+      totalInProgressCredits: json['totalInProgressCredits'] ?? 0,
+      totalCredits: json['totalCredits'] ?? 0,
+      totalDistanceCredits: json['totalDistanceCredits'] ?? 0,
+      grandTotalCredits: json['grandTotalCredits'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'earnedCredits': earnedCredits,
+      'earnedDistanceCredits': earnedDistanceCredits,
+      'totalEarnedCredits': totalEarnedCredits,
+      'inProgressCredits': inProgressCredits,
+      'inProgressDistanceCredits': inProgressDistanceCredits,
+      'totalInProgressCredits': totalInProgressCredits,
+      'totalCredits': totalCredits,
+      'totalDistanceCredits': totalDistanceCredits,
+      'grandTotalCredits': grandTotalCredits,
+    };
+  }
 }

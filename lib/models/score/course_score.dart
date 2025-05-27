@@ -34,4 +34,32 @@ class CourseScore {
       isDistanceLearning: data['isDistanceLearning']?.toString().trim() == '是',
     );
   }
+
+  factory CourseScore.fromJson(Map<String, dynamic> json) {
+    return CourseScore(
+      order: json['order'] ?? 0,
+      semester: json['semester'] ?? '',
+      courseCode: json['courseCode'] ?? '',
+      courseName: json['courseName'] ?? '',
+      credits: json['credits'] ?? '',
+      score: json['score'] ?? '',
+      note: json['note'] ?? '',
+      generalEducationCategory: json['generalEducationCategory'] ?? '',
+      isDistanceLearning: json['isDistanceLearning'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'order': order,
+      'semester': semester,
+      'courseCode': courseCode,
+      'courseName': courseName,
+      'credits': credits,
+      'score': score,
+      'note': note,
+      'generalEducationCategory': generalEducationCategory,
+      'isDistanceLearning': isDistanceLearning,
+    };
+  }
 }
