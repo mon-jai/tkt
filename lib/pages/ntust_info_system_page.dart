@@ -18,6 +18,7 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
   String _errorMessage = '';
   String? _username;
   String? _password;
+  bool _mounted = true;
 
   @override
   void initState() {
@@ -26,9 +27,17 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
     _loadCredentials();
   }
 
+  @override
+  void dispose() {
+    _mounted = false;
+    super.dispose();
+  }
+
   Future<void> _loadCredentials() async {
+    if (!_mounted) return;
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (!_mounted) return;
       setState(() {
         _username = prefs.getString('ntust_username');
         _password = prefs.getString('ntust_password');
@@ -39,7 +48,7 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
   }
 
   Future<void> _loadSubSystems() async {
-    if (!mounted) return;
+    if (!_mounted) return;
     
     setState(() {
       _isLoading = true;
@@ -48,27 +57,23 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
 
     try {
       final subSystems = await NTUSTConnector.getSubSystem();
-      if (mounted) {
-        setState(() {
-          _subSystems = subSystems;
-          _isLoading = false;
-        });
-      }
+      if (!_mounted) return;
+      setState(() {
+        _subSystems = subSystems;
+        _isLoading = false;
+      });
     } catch (e) {
       Log.e('載入子系統時發生錯誤：$e');
-      if (mounted) {
-        setState(() {
-          _errorMessage = '載入失敗：$e';
-          _isLoading = false;
-        });
-
-        
-      }
+      if (!_mounted) return;
+      setState(() {
+        _errorMessage = '載入失敗：$e';
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _openSystemUrl(String url, String title) async {
-    if (!mounted) return;
+    if (!_mounted) return;
     try {
       await Navigator.of(context).push(
         MaterialPageRoute(
@@ -76,7 +81,7 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
             initialUrl: url,
             title: title,
             onLoginResult: (success) {
-              if (!success) {
+              if (!success && _mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('登入失敗，請重試'),
@@ -90,14 +95,13 @@ class _NTUSTInfoSystemPageState extends State<NTUSTInfoSystemPage> {
       );
     } catch (e) {
       Log.e('開啟系統時發生錯誤：$e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('無法開啟系統：$e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!_mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('無法開啟系統：$e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

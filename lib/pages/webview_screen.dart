@@ -15,15 +15,15 @@ class WebViewScreen extends StatefulWidget {
   final String initialUrl;
   final String title;
   final Function(bool)? onLoginResult;
-  final String? username;  // 新增：可選的用戶名
-  final String? password;  // 新增：可選的密碼
+  final String? username; // 新增：可選的用戶名
+  final String? password; // 新增：可選的密碼
 
   const WebViewScreen({
     required this.initialUrl,
     required this.title,
     this.onLoginResult,
-    this.username,  // 新增
-    this.password,  // 新增
+    this.username, // 新增
+    this.password, // 新增
     super.key,
   });
 
@@ -35,7 +35,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   // Cookie 管理器實例
   final cookieManager = CookieManager.instance();
   late final cookieJar = DioConnector.instance.cookiesManager;
-  
+
   // WebView 控制器和狀態變數
   InAppWebViewController? webView;
   Uri url = Uri();
@@ -85,11 +85,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
       final prefs = await SharedPreferences.getInstance();
       final storedUsername = prefs.getString('stored_student_id');
       final storedPassword = prefs.getString('stored_password');
-      
+
       if (storedUsername != null && storedPassword != null) {
         Log.d('已從本地儲存讀取帳號密碼');
         await _autoFillWithCredentials(storedUsername, storedPassword);
-      } 
+      }
     } catch (e) {
       Log.e('載入儲存的帳號密碼時發生錯誤：$e');
     }
@@ -100,10 +100,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
     try {
       String? html = await webView?.getHtml();
       if (html == null) return false;
-      
-      return html.contains('g-recaptcha') || 
-             html.contains('grecaptcha') || 
-             html.contains('google.com/recaptcha');
+
+      return html.contains('g-recaptcha') ||
+          html.contains('grecaptcha') ||
+          html.contains('google.com/recaptcha');
     } catch (e) {
       Log.e('檢查 reCAPTCHA 時發生錯誤：$e');
       return false;
@@ -115,12 +115,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
     try {
       if (loginType == 'sso') {
         await webView?.evaluateJavascript(
-          source: 'document.getElementById("btnLogIn").click();'
-        );
+            source: 'document.getElementById("btnLogIn").click();');
       } else {
         await webView?.evaluateJavascript(
-          source: 'document.getElementById("loginButton2").click();'
-        );
+            source: 'document.getElementById("loginButton2").click();');
       }
       Log.d('點擊登入按鈕');
     } catch (e) {
@@ -129,10 +127,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   /// 自動填入帳號密碼並點擊登入
-  Future<void> _autoFillWithCredentials(String username, String password) async {
+  Future<void> _autoFillWithCredentials(
+      String username, String password) async {
     try {
       Log.d('開始自動填入帳號密碼');
-      
+
       // 檢查頁面類型並使用對應的元素選擇器
       String? html = await webView?.getHtml();
       if (html == null) return;
@@ -141,37 +140,37 @@ class _WebViewScreenState extends State<WebViewScreen> {
       if (html.contains('name="UserName"')) {
         // SSO 登入頁面
         await webView?.evaluateJavascript(
-          source: 'document.getElementsByName("UserName")[0].value = "$username";'
-        );
+            source:
+                'document.getElementsByName("UserName")[0].value = "$username";');
         await webView?.evaluateJavascript(
-          source: 'document.getElementsByName("Password")[0].value = "$password";'
-        );
+            source:
+                'document.getElementsByName("Password")[0].value = "$password";');
         loginType = 'sso';
         Log.d('SSO 登入頁面');
       } else {
         // 資訊系統登入頁面
         await webView?.evaluateJavascript(
-          source: 'document.getElementsByName("Ecom_User_ID")[0].value = "$username";'
-        );
+            source:
+                'document.getElementsByName("Ecom_User_ID")[0].value = "$username";');
         await webView?.evaluateJavascript(
-          source: 'document.getElementsByName("Ecom_Password")[0].value = "$password";'
-        );
+            source:
+                'document.getElementsByName("Ecom_Password")[0].value = "$password";');
         loginType = 'info';
         Log.d('資訊系統登入頁面');
       }
-      
+
       Log.d('自動填入完成，準備點擊登入按鈕');
-      
+
       setState(() {
         _showLoadingDialog = true;
       });
-      
+
       // 點擊登入按鈕
       await _clickLoginButton(loginType);
-      
+
       // 等待頁面載入（等待可能的 reCAPTCHA）
       await Future.delayed(const Duration(seconds: 2));
-      
+
       // 檢查是否出現 reCAPTCHA
       bool hasRecaptcha = await _hasReCaptcha();
       if (hasRecaptcha) {
@@ -187,7 +186,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
             ),
           );
         }
-        
+
         // 設定一個定時器，每隔一段時間檢查 reCAPTCHA 是否已完成
         bool captchaCompleted = false;
         while (!captchaCompleted) {
@@ -220,13 +219,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
       final prefs = await SharedPreferences.getInstance();
       final storedUsername = prefs.getString('stored_student_id');
       final storedPassword = prefs.getString('stored_password');
-      
+
       if (storedUsername != null && storedPassword != null) {
         await _autoFillWithCredentials(storedUsername, storedPassword);
       }
       return;
     }
-    
+
     await _autoFillWithCredentials(widget.username!, widget.password!);
   }
 
@@ -235,9 +234,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
     try {
       String? result = await webView?.getHtml();
       if (result == null) return;
-      
+
       // 檢查是否有錯誤訊息
-      if (result.contains('validation-summary-errors') || 
+      if (result.contains('validation-summary-errors') ||
           result.contains('error-message') ||
           result.contains('alert-danger')) {
         // 登入失敗
@@ -245,7 +244,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
         widget.onLoginResult?.call(false);
         return;
       }
-      
+
       // 檢查並保存 cookies
       await extractAndSaveCookies();
     } catch (e) {
@@ -257,16 +256,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
   /// 將 WebView Cookie 轉換為 io.Cookie
   io.Cookie _convertToIOCookie(Cookie webViewCookie) {
     Log.d('轉換 Cookie: ${webViewCookie.name}');
-    
-    var ioCookie = io.Cookie(webViewCookie.name, webViewCookie.value)
-      ..domain = webViewCookie.domain ?? '.ntust.edu.tw'
-      ..path = webViewCookie.path ?? '/'
-      ..secure = webViewCookie.isSecure ?? true
-      ..httpOnly = webViewCookie.isHttpOnly ?? true;
 
-    if (webViewCookie.expiresDate != null) {
-      ioCookie.expires = DateTime.fromMillisecondsSinceEpoch(webViewCookie.expiresDate!);
-    }
+    var ioCookie = io.Cookie(webViewCookie.name, webViewCookie.value)
+      ..domain = '.ntust.edu.tw'
+      ..path = '/';
 
     return ioCookie;
   }
@@ -274,12 +267,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
   /// 初始化並同步 Cookies
   Future<bool> initializeCookies() async {
     Log.d('開始初始化 Cookies...');
-    
+
     if (!firstLoad) {
       Log.d('非首次載入，跳過 Cookie 初始化');
       return true;
     }
-    
+
     firstLoad = false;
     try {
       // 等待 cookieJar 初始化完成
@@ -288,37 +281,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
         await _initializeCookieJar();
       }
 
-      // 從 DioConnector 讀取已存在的 cookies
-      final cookies = await cookieJar?.loadForRequest(Uri.parse(widget.initialUrl)) ?? [];
-      Log.d('從 DioConnector 讀取到 ${cookies.length} 個 Cookies');
-
-      // 清除 WebView 現有的 cookies
-      await cookieManager.deleteAllCookies();
-      Log.d('已清除 WebView 現有的 Cookies');
-
       // 獲取 WebView 當前的 cookies（用於檢查）
-      var existCookies = await cookieManager.getCookies(url: WebUri(widget.initialUrl));
+      var existCookies =
+          await cookieManager.getCookies(url: WebUri(widget.initialUrl));
       final cookiesName = existCookies.map((e) => e.name).toList();
       Log.d('WebView 現有的 Cookie 名稱: $cookiesName');
 
-      // 將 DioConnector 的 cookies 注入到 WebView
-      for (var cookie in cookies) {
-        if (!cookiesName.contains(cookie.name)) {
-          Log.d('注入 Cookie: ${cookie.name}');
-          cookiesName.add(cookie.name);
-          await cookieManager.setCookie(
-            url: WebUri(widget.initialUrl),
-            name: cookie.name,
-            value: cookie.value,
-            domain: cookie.domain,
-            path: cookie.path ?? "/",
-            maxAge: cookie.maxAge,
-            isSecure: cookie.secure,
-            isHttpOnly: cookie.httpOnly,
-          );
-        }
-      }
-      
       Log.d('Cookie 初始化完成');
       return true;
     } catch (e) {
@@ -329,11 +297,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   /// 從 WebView 提取 Cookies 並保存到 DioConnector
   Future<void> extractAndSaveCookies() async {
-    if (_cookiesExtractedAndSaved || webView == null || cookieJar == null) return;
+    if (_cookiesExtractedAndSaved || webView == null || cookieJar == null)
+      return;
 
     try {
       Log.d('開始從 WebView 提取 Cookies...');
-      
+
       final currentUrl = await webView!.getUrl();
       if (currentUrl == null) {
         Log.d('無法獲取當前 URL，停止提取 Cookies');
@@ -345,17 +314,14 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
       List<io.Cookie> ioCookies = [];
       for (var cookie in cookies) {
-        // 只保存特定的 cookies
-        if ([".ASPXAUTH", "ntustjwtsecret", "ntustsecret", "ASP.NET_SessionId"].contains(cookie.name)) {
-          var ioCookie = _convertToIOCookie(cookie);
-          ioCookies.add(ioCookie);
-          Log.d('已轉換並添加 Cookie: ${cookie.name}');
-        }
+        var ioCookie = _convertToIOCookie(cookie);
+        ioCookies.add(ioCookie);
+        Log.d('已轉換並添加 Cookie: ${cookie.name}');
       }
 
       if (ioCookies.isNotEmpty) {
         Log.d('準備保存 ${ioCookies.length} 個 Cookies 到 DioConnector');
-        
+
         // 清除舊的 cookies
         await cookieJar.deleteAll();
         Log.d('已清除 DioConnector 中的舊 Cookies');
@@ -399,10 +365,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
       // 檢查是否包含登入表單的特徵
       return html.contains('name="UserName"') || // SSO 登入
-             html.contains('name="Ecom_User_ID"') || // 資訊系統登入
-             html.contains('name="Ecom_Password"') ||
-             html.contains('id="btnLogIn"') ||
-             html.contains('id="loginButton2"');
+          html.contains('name="Ecom_User_ID"') || // 資訊系統登入
+          html.contains('name="Ecom_Password"') ||
+          html.contains('id="btnLogIn"') ||
+          html.contains('id="loginButton2"');
     } catch (e) {
       Log.e('檢查登入頁面時發生錯誤：$e');
       return false;
@@ -429,15 +395,18 @@ class _WebViewScreenState extends State<WebViewScreen> {
                         LinearProgressIndicator(value: progress),
                       Expanded(
                         child: InAppWebView(
-                          initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
+                          initialUrlRequest:
+                              URLRequest(url: WebUri(widget.initialUrl)),
                           initialSettings: InAppWebViewSettings(
                             useHybridComposition: true,
                             useOnDownloadStart: true,
                           ),
-                          onWebViewCreated: (InAppWebViewController controller) {
+                          onWebViewCreated:
+                              (InAppWebViewController controller) {
                             webView = controller;
                           },
-                          onLoadStart: (InAppWebViewController controller, Uri? url) {
+                          onLoadStart:
+                              (InAppWebViewController controller, Uri? url) {
                             setState(() {
                               if (lastLoadUri != url) {
                                 onLoadStopTime++;
@@ -446,23 +415,25 @@ class _WebViewScreenState extends State<WebViewScreen> {
                               this.url = url!;
                             });
                           },
-                          onLoadStop: (InAppWebViewController controller, Uri? url) async {
+                          onLoadStop: (InAppWebViewController controller,
+                              Uri? url) async {
                             if (url != null) {
                               setState(() {
                                 this.url = url;
                               });
-                              
+
                               // 檢查是否為登入頁面
                               bool isLoginPage = await _checkIsLoginPage();
                               if (isLoginPage) {
                                 await _loadStoredCredentials();
                               }
-                              
+
                               // 檢查登入結果
                               await _checkLoginResult();
                             }
                           },
-                          onProgressChanged: (InAppWebViewController controller, int progress) {
+                          onProgressChanged: (InAppWebViewController controller,
+                              int progress) {
                             setState(() {
                               this.progress = progress / 100;
                             });
