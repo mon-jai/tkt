@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tkt/connector/check_login.dart';
 import 'package:tkt/debug/log/log.dart';
-import '../services/course_service.dart';
-import '../models/course_model.dart';
-import '../utils/course_time_util.dart';
 import 'dart:convert';
-import '../services/schedule_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../connector/check_login.dart';
-import '../widgets/ntust_login_prompt_dialog.dart';
+import 'package:tkt/models/course_model.dart';
+import 'package:tkt/services/course_service.dart';
+import 'package:tkt/services/schedule_service.dart';
+import 'package:tkt/utils/course_time_util.dart';
+import 'package:tkt/widgets/ntust_login_prompt_dialog.dart';
+
 
 class CourseScheduleScreen extends StatefulWidget {
   const CourseScheduleScreen({super.key});

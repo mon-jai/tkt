@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tkt/pages/ntust_info_system_page.dart';
-import 'package:tkt/pages/score_page.dart';
+import 'package:tkt/screens/tools/info_system/info_system.dart';
+import 'package:tkt/screens/tools/score/score_page.dart';
 import '../tools/parking/parking_lot_screen.dart';
 
 class ToolsScreen extends StatelessWidget {

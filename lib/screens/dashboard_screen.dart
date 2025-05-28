@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tkt/screens/course/course_screen.dart';
 import '../providers/announcement_provider.dart';
 import '../services/login/auth_service.dart';
 import '../services/course_service.dart';
 import 'announcement_screen.dart';
 import 'campus_map_screen.dart';
-import 'course_schedule_screen.dart';
 import 'calendar_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
