@@ -281,30 +281,129 @@ class NotificationService {
     }
   }
 
-  /// 為所有符合條件的課程安排通知
-  static Future<void> scheduleNotificationsForCourses(List<Course> courses) async {
-    final isEnabled = await isNotificationEnabled();
-    if (!isEnabled) return;
+  /// 計算下一次「指定星期+時間」的觸發點，並提前 minutesBefore 分鐘
+  static tz.TZDateTime _nextInstanceOfWeekdayTime({
+    required int weekday, // 1=Mon..7=Sun
+    required int hour,
+    required int minute,
+    required int minutesBefore,
+  }) {
+    final now = tz.TZDateTime.now(tz.local);
+
+    // 先定位到今天同一時間
+    tz.TZDateTime candidate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+
+    // 跳到目標星期
+    int daysToAdd = (weekday - candidate.weekday) % 7;
+    candidate = candidate.add(Duration(days: daysToAdd));
+
+    // 提前 minutesBefore 分鐘
+    candidate = candidate.subtract(Duration(minutes: minutesBefore));
+
+    // 若時間已經過去，推遲一週
+    if (!candidate.isAfter(now)) {
+      candidate = candidate.add(const Duration(days: 7));
+    }
+    return candidate;
+  }
+
+  /// 針對單一課程建立「每週重複」通知
+  static Future<void> scheduleWeeklyNotificationForCourse(Course course) async {
+    await initialize();
 
     final minutesBefore = await getNotificationMinutes();
 
-    for (final course in courses) {
-      if (shouldScheduleNotification(course)) {
-        final notificationTime = calculateNotificationTime(course, minutesBefore);
-        
-        // 檢查通知時間是否在未來
-        if (notificationTime.isAfter(DateTime.now())) {
-          final title = formatNotificationTitle(course, minutesBefore);
-          final body = formatNotificationBody(course);
-          
-          await scheduleNotification(
-            course: course,
-            scheduledTime: notificationTime,
-            title: title,
-            body: body,
-          );
-        }
+    // 從課程物件取得開始時間的 時:分
+    final startHour = course.startTime.hour;
+    final startMinute = course.startTime.minute;
+
+    final tz.TZDateTime firstTrigger = _nextInstanceOfWeekdayTime(
+      weekday: course.dayOfWeek.clamp(1, 7),
+      hour: startHour,
+      minute: startMinute,
+      minutesBefore: minutesBefore,
+    );
+
+    final title = formatNotificationTitle(course, minutesBefore);
+    final body = formatNotificationBody(course);
+
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'course_reminder_channel',
+      '課程提醒',
+      channelDescription: '課程開始前的提醒通知',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      // 可選：threadIdentifier 讓同課程通知分組
+      // threadIdentifier: 'course_reminder',
+    );
+
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notificationsPlugin.zonedSchedule(
+      course.id.hashCode,
+      title,
+      body,
+      firstTrigger,
+      platformDetails,
+      payload: course.id,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+
+    if (kDebugMode) {
+      print('📆 已為課程建立每週提醒: ${course.name}');
+      print('  星期: ${course.dayOfWeek}, 時間: $startHour:$startMinute, 提前: $minutesBefore 分鐘');
+      print('  首次觸發: $firstTrigger');
+    }
+  }
+
+  /// 與既有呼叫點相容：為所有課程安排通知（改為每週重複）
+  static Future<void> scheduleNotificationsForCourses(List<Course> courses) async {
+    await scheduleWeeklyNotificationsForCourses(courses);
+  }
+
+  /// 針對多個課程建立「每週重複」通知（建議啟動時或課表變更時呼叫）
+  static Future<void> scheduleWeeklyNotificationsForCourses(List<Course> courses) async {
+    await initialize();
+
+    // 檢查開關
+    final enabled = await isNotificationEnabled();
+    if (!enabled) {
+      if (kDebugMode) print('🔕 通知開關為關閉狀態，略過排程');
+      return;
+    }
+
+    // 檢查權限
+    final hasPermission = await areNotificationsEnabled();
+    if (!hasPermission) {
+      final granted = await requestPermissions();
+      if (!granted) {
+        if (kDebugMode) print('❌ 用戶未授權通知，略過排程');
+        return;
       }
+    }
+
+    for (final c in courses) {
+      // 先用同 ID 取消，避免重複排程
+      await _notificationsPlugin.cancel(c.id.hashCode);
+      await scheduleWeeklyNotificationForCourse(c);
     }
   }
 
