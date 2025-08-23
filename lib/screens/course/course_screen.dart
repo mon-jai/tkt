@@ -870,8 +870,9 @@ class _WeeklyGridView extends StatelessWidget {
 
     final slotCount = CourseTimeUtil.timeSlots.length; // 14 (含 A-D)
     final textScale = MediaQuery.of(context).textScaleFactor.clamp(1.0, 1.6);
-    final rowMinHeight = 48.0 * textScale; // 最小列高，實際高度隨內容增長
+    final rowMinHeight = 48.0 * textScale; // 最小列高，內容多會自適應增高
 
+    // 建立格子資料
     List<List<Course?>> grid = List.generate(
       slotCount,
       (_) => List.filled(_weekdays.length, null),
@@ -885,10 +886,13 @@ class _WeeklyGridView extends StatelessWidget {
         }
       }
     }
+
+    final todayWeekday = DateTime.now().weekday; // 1=Mon..7=Sun
+
     return SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // 左側節次較窄，其餘平均分配，確保總寬不超出可視寬（避免右側邊框被裁切）
+          // 左側節次較窄，其餘平均分配，確保總寬不超出可視寬
           const horizontalPadding = 16.0;
           final availableWidth = constraints.maxWidth - horizontalPadding;
           const leftWidth = 56.0;
@@ -906,22 +910,34 @@ class _WeeklyGridView extends StatelessWidget {
                   child: SizedBox(
                     width: totalTableWidth,
                     child: Container(
-                      padding: const EdgeInsets.all(8.0),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.3), width: 0.6),
+                      ),
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.all(6.0),
                       child: Table(
-                        border: TableBorder.all(
-                          color: theme.colorScheme.outline.withOpacity(0.2),
-                          width: 1,
+                        border: TableBorder.symmetric(
+                          inside: BorderSide(color: theme.colorScheme.outlineVariant.withOpacity(0.25), width: 0.6),
+                          outside: BorderSide(color: Colors.transparent, width: 0),
                         ),
                         columnWidths: {
                           0: const FixedColumnWidth(leftWidth),
                           for (int i = 1; i <= _weekdays.length; i++) i: FixedColumnWidth(dayWidth),
                         },
+                        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                         children: [
                           TableRow(
-                            decoration: BoxDecoration(color: theme.colorScheme.surfaceVariant.withOpacity(0.3)),
                             children: [
-                              _buildHeaderCell('節次', theme, minHeight: 44),
-                              ..._weekdays.map((d) => _buildHeaderCell(d, theme, minHeight: 44)),
+                              _buildHeaderCell('節次', theme, minHeight: 40),
+                              for (int d = 0; d < _weekdays.length; d++)
+                                _buildHeaderCell(
+                                  _weekdays[d],
+                                  theme,
+                                  minHeight: 40,
+                                  highlight: (todayWeekday >= 1 && todayWeekday <= 5) && (d + 1 == todayWeekday),
+                                ),
                             ],
                           ),
                           for (int i = 0; i < slotCount; i++)
@@ -938,8 +954,17 @@ class _WeeklyGridView extends StatelessWidget {
                                   if (course == null) {
                                     return _buildEmptyCell(theme, rowMinHeight);
                                   }
-                                  final color = _getCourseColor(course.name, colorMap);
-                                  return _buildCourseCell(course, color, theme, minHeight: rowMinHeight, onTap: () => onEditCourse(course));
+                                  final base = _getCourseColor(course.name, colorMap);
+                                  final pillBg = base.withOpacity(0.18);
+                                  final pillBorder = base.withOpacity(0.35);
+                                  return _buildCoursePill(
+                                    course: course,
+                                    theme: theme,
+                                    minHeight: rowMinHeight,
+                                    background: pillBg,
+                                    borderColor: pillBorder,
+                                    onTap: () => onEditCourse(course),
+                                  );
                                 }),
                               ],
                             ),
@@ -956,22 +981,34 @@ class _WeeklyGridView extends StatelessWidget {
     );
   }
 
-  Widget _buildHeaderCell(String text, ThemeData theme, {bool isTimeSlot = false, double minHeight = 48}) {
+  Widget _buildHeaderCell(String text, ThemeData theme, {bool isTimeSlot = false, double minHeight = 48, bool highlight = false}) {
+    final child = Text(
+      text,
+      style: theme.textTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+        color: highlight ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+      ),
+      textAlign: TextAlign.center,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+
     return Container(
       constraints: BoxConstraints(minHeight: minHeight),
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       color: isTimeSlot ? theme.colorScheme.surfaceVariant.withOpacity(0.15) : Colors.transparent,
-      child: Text(
-        text,
-        style: theme.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        textAlign: TextAlign.center,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+      child: highlight
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2), width: 0.8),
+              ),
+              child: child,
+            )
+          : child,
     );
   }
 
@@ -979,44 +1016,43 @@ class _WeeklyGridView extends StatelessWidget {
     return Container(
       constraints: BoxConstraints(minHeight: minHeight),
       alignment: Alignment.center,
-      color: theme.colorScheme.surface.withOpacity(0.5),
+      color: Colors.transparent,
     );
   }
 
-  Widget _buildCourseCell(
-    Course course,
-    Color color,
-    ThemeData theme, {
+  Widget _buildCoursePill({
+    required Course course,
+    required ThemeData theme,
     required double minHeight,
-    VoidCallback? onTap,
+    required Color background,
+    required Color borderColor,
+    required VoidCallback onTap,
   }) {
-    final textColor = ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-        ? Colors.white
-        : Colors.black87;
-
-    final content = Container(
-      constraints: BoxConstraints(minHeight: minHeight),
-      alignment: Alignment.center,
-      margin: const EdgeInsets.all(1),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      child: Text(
-        course.name,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: textColor,
-          fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        constraints: BoxConstraints(minHeight: minHeight),
+        alignment: Alignment.center,
+        margin: const EdgeInsets.all(4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor, width: 0.8),
         ),
-        textAlign: TextAlign.center,
-        softWrap: true,
+        child: Text(
+          course.name,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
+          textAlign: TextAlign.center,
+          softWrap: true,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
-
-    if (onTap != null) {
-      return GestureDetector(onTap: onTap, child: content);
-    }
-    return content;
   }
 }
