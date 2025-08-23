@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tkt/connector/check_login.dart';
 import 'package:tkt/debug/log/log.dart';
-import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tkt/models/course_model.dart';
 import 'package:tkt/services/course_service.dart';
@@ -27,10 +27,22 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
   @override
   void initState() {
     super.initState();
+    // 計算初始索引，確保在週末時不會超出範圍
+    int currentWeekday = DateTime.now().weekday; // 1=週一, 7=週日
+    int initialIndex = 0; // 預設為週一
+    
+    if (currentWeekday >= 1 && currentWeekday <= 5) {
+      // 週一到週五
+      initialIndex = currentWeekday - 1;
+    } else {
+      // 週六或週日，預設顯示週一
+      initialIndex = 0;
+    }
+    
     _tabController = TabController(
       length: _weekdays.length,
       vsync: this,
-      initialIndex: DateTime.now().weekday - 1,
+      initialIndex: initialIndex,
     );
     _loadViewMode();
   }
@@ -51,28 +63,6 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<void> _exportCourses(BuildContext context) async {
-    final courseService = context.read<CourseService>();
-    final coursesJson = courseService.exportToJson();
-    
-    // 顯示導出的 JSON 數據
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('課表數據'),
-        content: SingleChildScrollView(
-          child: SelectableText(coursesJson),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
-          ),
-        ],
-      ),
-    );
   }
 
 

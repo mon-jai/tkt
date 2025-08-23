@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tkt/screens/course/course_screen.dart';
 import '../providers/announcement_provider.dart';
-import '../services/login/auth_service.dart';
 import '../services/course_service.dart';
 import 'announcement_screen.dart';
 import 'campus_map_screen.dart';
 import 'calendar_screen.dart';
+import 'navi/settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,12 +17,22 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  String? _storedStudentId;
+  
   @override
   void initState() {
     super.initState();
     // 在進入頁面時自動載入公告
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AnnouncementProvider>().refresh();
+    });
+    _loadStoredStudentId();
+  }
+  
+  Future<void> _loadStoredStudentId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _storedStudentId = prefs.getString('stored_student_id');
     });
   }
 
@@ -34,6 +45,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           await context.read<AnnouncementProvider>().refresh();
+          await _loadStoredStudentId();
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -54,8 +66,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildUserInfoCard(BuildContext context) {
-    final authService = context.watch<AuthService>();
-    final userProfile = authService.userProfile;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -63,14 +73,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '歡迎回來，${userProfile?.fullName ?? '同學'}',
+              '歡迎使用台科通',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            Text(
-              '學號：${userProfile?.account ?? ''}',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            if (_storedStudentId != null && _storedStudentId!.isNotEmpty)
+              Text(
+                '學號：$_storedStudentId',
+                style: Theme.of(context).textTheme.bodyMedium,
+              )
+            else
+              GestureDetector(
+                onTap: () async {
+                  // 直接導航到設定頁面，然後用戶可以點擊校園系統帳號
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                  // 當用戶從設定頁面回來時，重新載入校園系統帳號
+                  await _loadStoredStudentId();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(context).primaryColor,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.settings,
+                        size: 16,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '請先至設定儲存校園系統帳號',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

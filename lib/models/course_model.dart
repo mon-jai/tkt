@@ -1,4 +1,3 @@
-import 'dart:convert';
 import '../utils/course_time_util.dart';
 
 class Course {
@@ -80,5 +79,27 @@ class Course {
   bool hasConflictWith(Course other) {
     if (dayOfWeek != other.dayOfWeek) return false;
     return !(endSlot < other.startSlot || startSlot > other.endSlot);
+  }
+
+  // 輔助方法：獲取課程開始時間
+  DateTime get startTime {
+    final timeSlot = CourseTimeUtil.getTimeSlotByIndex(startSlot);
+    return DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+      timeSlot.startHour,
+      timeSlot.startMin,
+    );
+  }
+
+  // 輔助方法：獲取課程結束時間
+  DateTime get endTime {
+    final timeSlot = CourseTimeUtil.getTimeSlotByIndex(endSlot);
+    return DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    ).add(Duration(minutes: timeSlot.endTime));
   }
 } 

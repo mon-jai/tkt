@@ -4,8 +4,9 @@ import 'package:tkt/pages/ntust_test_page.dart';
 import 'package:tkt/screens/account_storage_page.dart';
 import '../../providers/theme_provider.dart';
 import '../setting/about/about_screen.dart';
-import '../setting/profile/profile_screen.dart';
-import '../auth_test_screen.dart';
+import '../setting/notification/notification_screen.dart';
+
+
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -23,36 +24,20 @@ class SettingsScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 16),
               ListTile(
-                leading: const Icon(Icons.person),
-                title: const Text('個人資料'),
+                leading: const Icon(Icons.notifications),
+                title: const Text('通知設定'),
+                subtitle: const Text('課程提醒設定'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(),
+                      builder: (context) => const NotificationScreen(),
                     ),
                   );
                 },
               ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.notifications),
-                title: const Text('通知設定'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: 導航到通知設定頁面
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.language),
-                title: const Text('語言'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: 導航到語言設定頁面
-                },
-              ),
+
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.dark_mode),

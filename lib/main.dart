@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'screens/login/login_screen.dart';
 import 'screens/navi/navi_screen.dart';
-import 'services/login/auth_service.dart';
 import 'services/storage_service.dart';
 import 'services/course_service.dart';
 import 'services/calendar_service.dart';
 import 'services/ntust_auth_service.dart';
+import 'services/notification_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/announcement_provider.dart';
 import 'providers/language_provider.dart';
@@ -18,15 +17,15 @@ import 'config/language.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // 初始化通知服務
+  await NotificationService.initialize();
+  
   final prefs = await SharedPreferences.getInstance();
   final storageService = StorageService(prefs);
   
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider<AuthService>(
-          create: (_) => AuthService(),
-        ),
         ChangeNotifierProvider<NtustAuthService>(
           create: (_) => NtustAuthService(),
           lazy: false,
@@ -68,12 +67,24 @@ class MyApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: Consumer2<AuthService, NtustAuthService>(
-            builder: (context, authService, ntustAuthService, child) {
-              if (authService.isLoading) {
-                return const Center(child: CircularProgressIndicator());
+          home: FutureBuilder(
+            future: Future.delayed(const Duration(seconds: 2)), // 初始化載入時間
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('系統初始化中...'),
+                      ],
+                    ),
+                  ),
+                );
               }
-              return authService.isLoggedIn ? const NaviScreen() : const LoginScreen();
+              return const NaviScreen();
             },
           ),
           debugShowCheckedModeBanner: false,
