@@ -48,3 +48,4 @@ app.*.map.json
 /windows/flutter
 /windows
 /linux
+/ios/build/ios/XCBuildData

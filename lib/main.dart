@@ -20,6 +20,16 @@ void main() async {
   // 初始化通知服務
   await NotificationService.initialize();
   
+  // 請求通知權限
+  try {
+    final hasPermission = await NotificationService.areNotificationsEnabled();
+    if (!hasPermission) {
+      await NotificationService.requestPermissions();
+    }
+  } catch (e) {
+    print('請求通知權限時發生錯誤: $e');
+  }
+  
   final prefs = await SharedPreferences.getInstance();
   final storageService = StorageService(prefs);
   

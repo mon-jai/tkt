@@ -14,6 +14,26 @@ class NotificationService {
   
   static bool _isInitialized = false;
 
+  /// 為 iOS 配置通知設定
+  static Future<void> _configureiOSNotifications() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final ios = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+
+      if (ios != null) {
+        final permissions = await ios.checkPermissions();
+        if (kDebugMode) {
+          print('📱 iOS 通知權限詳情:');
+          print('- 整體啟用: ${permissions?.isEnabled}');
+          print('- Alert: ${permissions?.isAlertEnabled}');
+          print('- Badge: ${permissions?.isBadgeEnabled}');
+          print('- Sound: ${permissions?.isSoundEnabled}');
+          print('- Provisional: ${permissions?.isProvisionalEnabled}');
+        }
+      }
+    }
+  }
+
   /// 初始化通知服務
   static Future<void> initialize() async {
     if (_isInitialized) return;
@@ -27,9 +47,13 @@ class NotificationService {
 
     const DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+      // 讓前景時也能顯示通知（可被單則通知覆蓋）
+      defaultPresentAlert: true,
+      defaultPresentBadge: true,
+      defaultPresentSound: true,
     );
 
     const InitializationSettings initializationSettings =
@@ -42,6 +66,9 @@ class NotificationService {
       initializationSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
+
+    // 為 iOS 進行額外配置
+    await _configureiOSNotifications();
 
     _isInitialized = true;
     if (kDebugMode) {
@@ -61,14 +88,21 @@ class NotificationService {
       final bool? granted = await androidImplementation?.requestNotificationsPermission();
       return granted ?? false;
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      final bool? result = await _notificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
+      final ios = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+
+      final bool? result = await ios?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+        critical: false,
+        provisional: false,
+      );
+      
+      if (kDebugMode) {
+        print('📱 iOS 通知權限請求結果: $result');
+      }
+      
       return result ?? false;
     }
     return true;
@@ -226,13 +260,14 @@ class NotificationService {
     final tz.TZDateTime tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
 
     await _notificationsPlugin.zonedSchedule(
-      course.id.hashCode, // 使用課程ID的hash作為通知ID
+      course.id.hashCode,
       title,
       body,
       tzScheduledTime,
       platformChannelSpecifics,
       payload: course.id,
-      matchDateTimeComponents: DateTimeComponents.time,
+      // 不重複；如需每日/每週重複，才設定 matchDateTimeComponents
+      // matchDateTimeComponents: DateTimeComponents.time,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
 
@@ -302,12 +337,20 @@ class NotificationService {
       
       return await androidImplementation?.areNotificationsEnabled() ?? false;
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      final IOSFlutterLocalNotificationsPlugin? iosImplementation =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>();
+      final ios = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
       
-      return await iosImplementation?.checkPermissions().then((permissions) =>
-          permissions?.isEnabled ?? false) ?? false;
+      final permissions = await ios?.checkPermissions();
+      final isEnabled = permissions?.isEnabled ?? false;
+      
+      if (kDebugMode) {
+        print('📱 iOS 通知權限狀態: $isEnabled');
+        print('📱 詳細權限: alert=${permissions?.isAlertEnabled}, '
+              'badge=${permissions?.isBadgeEnabled}, '
+              'sound=${permissions?.isSoundEnabled}');
+      }
+      
+      return isEnabled;
     }
     
     return false;
@@ -317,10 +360,24 @@ class NotificationService {
   static Future<void> sendTestNotification() async {
     await initialize();
     
+    if (kDebugMode) {
+      print('📱 開始發送測試通知...');
+    }
+    
     // 檢查權限
     final hasPermission = await areNotificationsEnabled();
+    if (kDebugMode) {
+      print('📱 當前通知權限狀態: $hasPermission');
+    }
+    
     if (!hasPermission) {
+      if (kDebugMode) {
+        print('📱 權限不足，嘗試請求權限...');
+      }
       final granted = await requestPermissions();
+      if (kDebugMode) {
+        print('📱 權限請求結果: $granted');
+      }
       if (!granted) {
         throw Exception('通知權限被拒絕');
       }
@@ -342,10 +399,20 @@ class NotificationService {
     final title = formatNotificationTitle(testCourse, minutesBefore);
     final body = formatNotificationBody(testCourse);
 
+    if (kDebugMode) {
+      print('📱 準備發送通知:');
+      print('標題: $title');
+      print('內容: $body');
+    }
+
     await sendNotification(
       title: title,
       body: body,
       course: testCourse,
     );
+    
+    if (kDebugMode) {
+      print('📱 測試通知發送完成');
+    }
   }
 }
