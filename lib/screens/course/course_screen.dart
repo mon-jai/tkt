@@ -236,6 +236,7 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
     String teacher = courseToEdit?.teacher ?? '';
     String classroom = courseToEdit?.classroom ?? '';
     int dayOfWeek = courseToEdit?.dayOfWeek ?? DateTime.now().weekday;
+    if (dayOfWeek > 5) dayOfWeek = 1; // 僅允許週一至週五
     int startSlot = courseToEdit?.startSlot ?? 1;
     int endSlot = courseToEdit?.endSlot ?? 1;
     String? note = courseToEdit?.note;
@@ -271,7 +272,7 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
                     decoration: const InputDecoration(labelText: '星期'),
                     value: dayOfWeek,
                     items: List.generate(
-                      7,
+                      5,
                       (index) => DropdownMenuItem(
                         value: index + 1,
                         child: Text('週${_weekdays[index]}'),
@@ -283,7 +284,12 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<int>(
-                          decoration: const InputDecoration(labelText: '開始節次'),
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: '開始節次',
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
                           value: startSlot,
                           items: CourseTimeUtil.timeSlots.map((slot) {
                             return DropdownMenuItem(
@@ -304,10 +310,15 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
                           },
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<int>(
-                          decoration: const InputDecoration(labelText: '結束節次'),
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: '結束節次',
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
                           value: endSlot,
                           items: CourseTimeUtil.timeSlots
                               .where((slot) => slot.index >= startSlot)
@@ -535,7 +546,9 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
         ],
       ),
       body: _isGridView
-          ? const _WeeklyGridView()
+          ? _WeeklyGridView(
+              onEditCourse: (course) => _showAddCourseDialog(context, course),
+            )
           : TabBarView(
               controller: _tabController,
               children: List.generate(
@@ -821,7 +834,9 @@ class _DayScheduleView extends StatelessWidget {
 }
 
 class _WeeklyGridView extends StatelessWidget {
-  const _WeeklyGridView();
+  const _WeeklyGridView({required this.onEditCourse});
+
+  final Function(Course) onEditCourse;
 
   static const List<String> _weekdays = ['一', '二', '三', '四', '五'];
 
@@ -852,7 +867,11 @@ class _WeeklyGridView extends StatelessWidget {
     final courseService = Provider.of<CourseService>(context);
     final courses = courseService.courses;
     final colorMap = <String, Color>{};
-    final slotCount = 10;
+
+    final slotCount = CourseTimeUtil.timeSlots.length; // 14 (含 A-D)
+    final textScale = MediaQuery.of(context).textScaleFactor.clamp(1.0, 1.6);
+    final rowMinHeight = 48.0 * textScale; // 最小列高，實際高度隨內容增長
+
     List<List<Course?>> grid = List.generate(
       slotCount,
       (_) => List.filled(_weekdays.length, null),
@@ -866,52 +885,82 @@ class _WeeklyGridView extends StatelessWidget {
         }
       }
     }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: Container(
-          padding: const EdgeInsets.all(8.0),
-          child: Table(
-            border: TableBorder.all(
-              color: theme.colorScheme.outline.withOpacity(0.2),
-              width: 1,
-            ),
-            defaultColumnWidth: const FixedColumnWidth(85),
-            children: [
-              TableRow(
-                decoration: BoxDecoration(color: theme.colorScheme.surfaceVariant.withOpacity(0.3)),
-                children: [
-                  _buildHeaderCell('節次', theme),
-                  ..._weekdays.map((d) => _buildHeaderCell(d, theme)),
-                ],
-              ),
-              for (int i = 0; i < slotCount; i++)
-                TableRow(
-                  children: [
-                    _buildHeaderCell(CourseTimeUtil.timeSlots[i].label, theme, isTimeSlot: true),
-                    ...List.generate(_weekdays.length, (j) {
-                      final course = grid[i][j];
-                      if (course == null) {
-                        return _buildEmptyCell(theme);
-                      }
-                      final color = _getCourseColor(course.name, colorMap);
-                      return _buildCourseCell(course, color, theme);
-                    }),
-                  ],
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 左側節次較窄，其餘平均分配，確保總寬不超出可視寬（避免右側邊框被裁切）
+          const horizontalPadding = 16.0;
+          final availableWidth = constraints.maxWidth - horizontalPadding;
+          const leftWidth = 56.0;
+          final dayWidth = ((availableWidth - leftWidth) / _weekdays.length).floorToDouble();
+          final totalTableWidth = leftWidth + dayWidth * _weekdays.length;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: horizontalPadding / 2),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: SizedBox(
+                    width: totalTableWidth,
+                    child: Container(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Table(
+                        border: TableBorder.all(
+                          color: theme.colorScheme.outline.withOpacity(0.2),
+                          width: 1,
+                        ),
+                        columnWidths: {
+                          0: const FixedColumnWidth(leftWidth),
+                          for (int i = 1; i <= _weekdays.length; i++) i: FixedColumnWidth(dayWidth),
+                        },
+                        children: [
+                          TableRow(
+                            decoration: BoxDecoration(color: theme.colorScheme.surfaceVariant.withOpacity(0.3)),
+                            children: [
+                              _buildHeaderCell('節次', theme, minHeight: 44),
+                              ..._weekdays.map((d) => _buildHeaderCell(d, theme, minHeight: 44)),
+                            ],
+                          ),
+                          for (int i = 0; i < slotCount; i++)
+                            TableRow(
+                              children: [
+                                _buildHeaderCell(
+                                  CourseTimeUtil.timeSlots[i].label,
+                                  theme,
+                                  isTimeSlot: true,
+                                  minHeight: rowMinHeight,
+                                ),
+                                ...List.generate(_weekdays.length, (j) {
+                                  final course = grid[i][j];
+                                  if (course == null) {
+                                    return _buildEmptyCell(theme, rowMinHeight);
+                                  }
+                                  final color = _getCourseColor(course.name, colorMap);
+                                  return _buildCourseCell(course, color, theme, minHeight: rowMinHeight, onTap: () => onEditCourse(course));
+                                }),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-            ],
-          ),
-        ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildHeaderCell(String text, ThemeData theme, {bool isTimeSlot = false}) {
+  Widget _buildHeaderCell(String text, ThemeData theme, {bool isTimeSlot = false, double minHeight = 48}) {
     return Container(
-      height: 48,
+      constraints: BoxConstraints(minHeight: minHeight),
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       color: isTimeSlot ? theme.colorScheme.surfaceVariant.withOpacity(0.15) : Colors.transparent,
       child: Text(
         text,
@@ -920,61 +969,54 @@ class _WeeklyGridView extends StatelessWidget {
           color: theme.colorScheme.onSurfaceVariant,
         ),
         textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
 
-  Widget _buildEmptyCell(ThemeData theme) {
+  Widget _buildEmptyCell(ThemeData theme, double minHeight) {
     return Container(
-      height: 60,
+      constraints: BoxConstraints(minHeight: minHeight),
       alignment: Alignment.center,
       color: theme.colorScheme.surface.withOpacity(0.5),
     );
   }
 
-  Widget _buildCourseCell(Course course, Color color, ThemeData theme) {
+  Widget _buildCourseCell(
+    Course course,
+    Color color,
+    ThemeData theme, {
+    required double minHeight,
+    VoidCallback? onTap,
+  }) {
     final textColor = ThemeData.estimateBrightnessForColor(color) == Brightness.dark
         ? Colors.white
         : Colors.black87;
 
-    return Container(
-      height: 60,
+    final content = Container(
+      constraints: BoxConstraints(minHeight: minHeight),
       alignment: Alignment.center,
       margin: const EdgeInsets.all(1),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(6),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            course.name,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (course.classroom.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 2.0),
-              child: Text(
-                course.classroom,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: textColor.withOpacity(0.85),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      child: Text(
+        course.name,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.bold,
+        ),
+        textAlign: TextAlign.center,
+        softWrap: true,
       ),
     );
+
+    if (onTap != null) {
+      return GestureDetector(onTap: onTap, child: content);
+    }
+    return content;
   }
-} 
+}

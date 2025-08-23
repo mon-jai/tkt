@@ -254,8 +254,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     const SizedBox(height: 8),
                     Text(
                       '• 請確保您的裝置允許此應用程式發送通知\n'
-                      '• 通知功能需要應用程式在背景運行\n'
-                      '• 只有今日和明日的課程會發送提醒',
+                      '• 排程建立後，就算關閉或滑掉 App 也會準時提醒\n'
+                      '• 課程採每週固定時間提醒（於上課前 N 分鐘）',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.grey[600],
                       ),
