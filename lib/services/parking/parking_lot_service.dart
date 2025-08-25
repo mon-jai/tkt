@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import '../models/parking_lot_model.dart';
+import '../../models/parking_lot_model.dart';
 
 class ParkingLotService {
   static const String apiUrl = 'https://pay.pss-group.com/online-payment/api/sites_remain';

@@ -74,6 +74,13 @@ class CourseTimeUtil {
   }
 
   static String formatTimeSlotRange(int startIndex, int endIndex) {
+    if (startIndex == endIndex) {
+      try {
+        return timeSlots.firstWhere((slot) => slot.index == startIndex).label;
+      } catch (e) {
+        return '';
+      }
+    }
     final slots = getTimeSlotRange(startIndex, endIndex);
     if (slots.isEmpty) return '';
     return '${slots.first.label}-${slots.last.label}';

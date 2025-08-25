@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tkt/screens/main_screen.dart';
-import 'package:tkt/screens/register_screen.dart';
-import '../services/auth_service.dart';
-import '../models/auth_model.dart'; // 您的 AuthModel
-import '../services/storage_service.dart';
-import '../screens/dashboard_screen.dart';
+import 'package:tkt/screens/navi/navi_screen.dart';
+import 'package:tkt/screens/login/register_screen.dart';
+import '../../services/login/auth_service.dart';
+import '../../models/auth_model.dart'; // 您的 AuthModel
+import '../../services/storage_service.dart';
+import '../dashboard_screen.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -95,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (loginResponse.success && loginResponse.token != null) {
             debugPrint("LoginScreen: Login successful, navigating to Main App Screen.");
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainScreen()),
+              MaterialPageRoute(builder: (_) => const NaviScreen()),
               (route) => false,
             );
           } else {

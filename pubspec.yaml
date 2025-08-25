@@ -28,6 +28,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # UI & Styling
   cupertino_icons: ^1.0.2 # iOS 風格圖示
@@ -50,18 +52,34 @@ dependencies:
   # State Management (我們從 Provider 開始，您可以稍後更換為 BLoC, Riverpod, GetX 等)
   provider: ^6.0.5
 
+  # Local Notifications
+  flutter_local_notifications: ^19.4.0
+  timezone: ^0.10.1
+
   # Maps (如果需要 Google 地圖)
   # google_maps_flutter: ^2.5.0 # 取消註解並執行 flutter pub get 來加入
 
   # App Info
-  package_info_plus: ^5.0.1
+  package_info_plus: ^8.3.1
 
   # Internationalization and Formatting
-  intl: ^0.19.0
+  intl: ^0.20.2
 
   # Add other packages here
   url_launcher: ^6.1.14
   flutter_html: ^3.0.0-beta.2
+  dio_cookie_manager: ^3.2.0
+  path_provider: ^2.1.5
+  cookie_jar: ^4.0.8
+  alice_lightweight: ^3.5.1
+  fk_user_agent: ^2.1.0
+  get: ^4.6.6
+  sprintf: ^7.0.0
+  json_annotation: ^4.9.0
+  quiver: ^3.2.2
+  flutter_cache_manager: ^3.4.0
+  logger: ^2.5.0
+  back_button_interceptor: ^7.0.0  # 添加返回按鈕攔截器
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +91,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^3.0.0
+  build_runner: ^2.4.12
+  json_serializable: ^6.9.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

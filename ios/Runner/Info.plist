@@ -45,5 +45,26 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- 通知權限配置 -->
+	<key>NSUserNotificationAlertStyle</key>
+	<string>alert</string>
+	
+	<!-- iOS 通知權限描述 -->
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>此應用需要發送通知來提醒您的課程時間</string>
+	
+	<!-- 背景模式權限（用於定時通知） -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	
+	<!-- 允許應用在背景中發送通知 -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.yourapp.notification-task</string>
+	</array>
 </dict>
 </plist>

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import '../utils/course_time_util.dart';
 
 class Course {
@@ -6,7 +5,7 @@ class Course {
   final String name;        // 課程名稱
   final String teacher;     // 教師名稱
   final String classroom;   // 教室
-  final int dayOfWeek;       // 1-7，代表週一到週日
+  final int dayOfWeek;       // 1-5，代表週一到週日
   final int startSlot;       // 開始節次（1-14）
   final int endSlot;         // 結束節次（1-14）
   final String? note;        // 備註
@@ -60,7 +59,7 @@ class Course {
 
   // 輔助方法：獲取星期幾的中文名稱
   String get dayOfWeekString {
-    const days = ['一', '二', '三', '四', '五', '六', '日'];
+    const days = ['一', '二', '三', '四', '五'];
     return '週${days[dayOfWeek - 1]}';
   }
 
@@ -80,5 +79,27 @@ class Course {
   bool hasConflictWith(Course other) {
     if (dayOfWeek != other.dayOfWeek) return false;
     return !(endSlot < other.startSlot || startSlot > other.endSlot);
+  }
+
+  // 輔助方法：獲取課程開始時間
+  DateTime get startTime {
+    final timeSlot = CourseTimeUtil.getTimeSlotByIndex(startSlot);
+    return DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+      timeSlot.startHour,
+      timeSlot.startMin,
+    );
+  }
+
+  // 輔助方法：獲取課程結束時間
+  DateTime get endTime {
+    final timeSlot = CourseTimeUtil.getTimeSlotByIndex(endSlot);
+    return DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    ).add(Duration(minutes: timeSlot.endTime));
   }
 } 

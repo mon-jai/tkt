@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course_model.dart';
 import '../utils/course_time_util.dart';
+import 'notification_service.dart';
 
 class CourseService with ChangeNotifier {
   static const String _coursesKey = 'courses';
@@ -22,6 +23,10 @@ class CourseService with ChangeNotifier {
           .map((json) => Course.fromJson(jsonDecode(json)))
           .toList();
       debugPrint('已載入 ${_courses.length} 門課程');
+      
+      // 載入課程後安排通知
+      await _scheduleNotifications();
+      
       notifyListeners();
     } catch (e) {
       debugPrint('載入課程時發生錯誤: $e');
@@ -46,6 +51,7 @@ class CourseService with ChangeNotifier {
     _courses.add(course);
     debugPrint('已添加課程：${course.name}');
     await _saveCourses();
+    await _scheduleNotifications();
     notifyListeners();
   }
 
@@ -53,6 +59,7 @@ class CourseService with ChangeNotifier {
     _courses.removeWhere((course) => course.id == courseId);
     debugPrint('已刪除課程 ID：$courseId');
     await _saveCourses();
+    await _scheduleNotifications();
     notifyListeners();
   }
 
@@ -62,6 +69,7 @@ class CourseService with ChangeNotifier {
       _courses[index] = updatedCourse;
       debugPrint('已更新課程：${updatedCourse.name}');
       await _saveCourses();
+      await _scheduleNotifications();
       notifyListeners();
     }
   }
@@ -138,9 +146,27 @@ class CourseService with ChangeNotifier {
           .map((json) => Course.fromJson(json as Map<String, dynamic>))
           .toList();
       await _saveCourses();
+      await _scheduleNotifications();
       notifyListeners();
     } catch (e) {
       throw Exception('無效的課表數據格式');
     }
+  }
+
+  // 安排課程通知
+  Future<void> _scheduleNotifications() async {
+    await NotificationService.scheduleNotificationsForCourses(_courses);
+  }
+
+  // 重新安排所有通知（當設定改變時調用）
+  Future<void> rescheduleNotifications() async {
+    await NotificationService.cancelAllNotifications();
+    await _scheduleNotifications();
+  }
+
+  // 獲取下次課程提醒
+  Course? getNextCourseReminder() {
+    final upcomingCourses = getUpcomingCourses();
+    return upcomingCourses.isNotEmpty ? upcomingCourses.first : null;
   }
 } 

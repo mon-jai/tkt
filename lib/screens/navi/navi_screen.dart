@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:tkt/screens/tools_screen.dart';
-import 'dashboard_screen.dart';
-import 'discussion_screen.dart';
+import 'package:tkt/screens/navi/tools_screen.dart';
+import '../dashboard_screen.dart';
+
 import 'settings_screen.dart';
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+class NaviScreen extends StatefulWidget {
+  const NaviScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<NaviScreen> createState() => _NaviScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _NaviScreenState extends State<NaviScreen> {
   int _selectedIndex = 0;
 
   // 使用簡單的小部件列表，避免初始化複雜的頁面
@@ -20,10 +20,8 @@ class _MainScreenState extends State<MainScreen> {
       case 0:
         return const DashboardScreen();
       case 1:
-        return const DiscussionScreen();
-      case 2:
         return const ToolsScreen();
-      case 3:
+      case 2:
         return const SettingsScreen();
       default:
         return const Center(child: Text('頁面不存在'));
@@ -49,10 +47,6 @@ class _MainScreenState extends State<MainScreen> {
             label: '儀表板',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.forum),
-            label: '討論區',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.build),
             label: '工具',
           ),
@@ -62,7 +56,6 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).primaryColor,
         onTap: _onItemTapped,
       ),
     );

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/auth_service.dart'; // 您的 AuthService
-import '../models/auth_model.dart';   // 您的 AuthModel
+import '../../services/login/auth_service.dart'; // 您的 AuthService
+import '../../models/auth_model.dart';   // 您的 AuthModel
 import 'login_screen.dart';        // 登入畫面
 
 // 註冊階段枚舉
