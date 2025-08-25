@@ -57,8 +57,7 @@
 	<!-- 背景模式權限（用於定時通知） -->
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>background-processing</string>
-		<string>background-fetch</string>
+		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
 	
