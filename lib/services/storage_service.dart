@@ -6,6 +6,7 @@ class StorageService {
   static const String _rememberMeKey = 'remember_me';
   static const String _keepLoggedInKey = 'keep_logged_in';
   static const String _darkModeKey = 'dark_mode';
+  static const String _demoModeKey = 'demo_mode';
 
   final SharedPreferences _prefs;
 
@@ -80,5 +81,15 @@ class StorageService {
   // 獲取深色模式設定
   Future<bool> getDarkMode() async {
     return _prefs.getBool(_darkModeKey) ?? false;
+  }
+
+  // 設置演示模式
+  Future<void> setDemoMode(bool value) async {
+    await _prefs.setBool(_demoModeKey, value);
+  }
+
+  // 獲取演示模式設定
+  Future<bool> getDemoMode() async {
+    return _prefs.getBool(_demoModeKey) ?? false;
   }
 } 

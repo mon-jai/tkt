@@ -1,11 +1,15 @@
 // lib/ui/pages/ntust_connector_test_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:provider/provider.dart';
 // TODO: 將 'tkt' 替換為您專案的實際名稱
 import 'package:tkt/connector/core/dio_connector.dart';
 import 'package:tkt/connector/ntust_connector.dart';
 import 'package:tkt/debug/log/log.dart'; // 您提供的 Log 類別
 import 'package:tkt/models/ntust/ap_tree_json.dart';
+import '../providers/demo_mode_provider.dart';
+import '../services/demo_service.dart';
+import '../services/ntust_auth_service.dart';
 // 或者如果您有 manual_login_webview_screen.dart 並且想用它來顯示 (雖然它的設計初衷是手動登入)
 import 'webview_screen.dart';
 
@@ -301,6 +305,42 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
     }
   }
 
+  /// 演示模式登入處理
+  Future<void> _performDemoLogin() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _statusMessage = '啟用演示模式登入...';
+    });
+
+    try {
+      final ntustAuthService = context.read<NtustAuthService>();
+      final result = await ntustAuthService.login(
+        DemoService.getDemoStudentId(),
+        "demo_password",
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = result;
+          if (result.contains('演示模式已啟用')) {
+            _cookieInfo = '演示模式：無需 Cookies';
+            _sessionInfo = '演示模式會話已建立\n學號: ${DemoService.getDemoStudentId()}\n狀態: 已登入';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = '演示模式啟用失敗: $e';
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
@@ -309,48 +349,104 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
   }
 
   Widget _buildTestUI(BuildContext context) {
-    // ... (UI TextField 和按鈕部分與您提供的版本相同，這裡不再重複)
-    // 按鈕的 onPressed 應分別指向 _performAutomatedLoginAndVerify 和 _navigateToManualLoginAndVerify
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            const SizedBox(height: 24),
-            if (_isLoading)
-              const Center(child: CircularProgressIndicator())
-            else ...[
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _navigateToManualLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('開啟手動登入'),
-              ),      
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _clearAllCookies,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('清除所有 Cookies'),
-              ),
-            ],
-            const SizedBox(height: 24),
-            
-            // Cookie 和 Session 資訊區域
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
+    return Consumer<DemoModeProvider>(
+      builder: (context, demoModeProvider, child) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                // 演示模式提示
+                if (demoModeProvider.isDemoModeEnabled) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.preview,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '演示模式已啟用',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          DemoService.getDemoModeMessage(),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: _performDemoLogin,
+                          icon: const Icon(Icons.play_arrow, size: 18),
+                          label: const Text('啟用演示登入'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                            minimumSize: const Size(double.infinity, 40),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+                
+                const SizedBox(height: 24),
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else ...[
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: demoModeProvider.isDemoModeEnabled ? null : _navigateToManualLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: Text(demoModeProvider.isDemoModeEnabled ? '演示模式：無需手動登入' : '開啟手動登入'),
+                  ),      
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: _clearAllCookies,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('清除所有 Cookies'),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                
+                // Cookie 和 Session 資訊區域
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -384,25 +480,27 @@ class _NtustConnectorTestPageState extends State<NtustConnectorTestPage> {
                     SelectableText(_sessionInfo, style: const TextStyle(fontFamily: 'monospace')),
                   ],
                 ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-            if (_statusMessage.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  _statusMessage,
-                  style: TextStyle(
-                    color: _statusMessage.contains('錯誤') || _statusMessage.contains('失敗')
-                        ? Colors.red
-                        : Colors.green,
-                  ),
                 ),
-              ),
-          ],
-        ),
-      ),
+                ),
+                
+                const SizedBox(height: 16),
+                if (_statusMessage.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      _statusMessage,
+                      style: TextStyle(
+                        color: _statusMessage.contains('錯誤') || _statusMessage.contains('失敗')
+                            ? Colors.red
+                            : Colors.green,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

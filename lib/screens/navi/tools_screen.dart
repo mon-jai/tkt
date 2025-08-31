@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:tkt/screens/tools/info_system/info_system.dart';
 import 'package:tkt/screens/tools/score/score_page.dart';
+import '../../providers/demo_mode_provider.dart';
+import '../../services/demo_service.dart';
 import '../tools/parking/parking_lot_screen.dart';
 
 class ToolsScreen extends StatelessWidget {
@@ -15,12 +18,47 @@ class ToolsScreen extends StatelessWidget {
         title: const Text('工具'),
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
+      body: Consumer<DemoModeProvider>(
+        builder: (context, demoModeProvider, child) {
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 演示模式指示器
+                if (demoModeProvider.isDemoModeEnabled) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.preview,
+                          color: theme.colorScheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            DemoService.getDemoModeMessage(),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                const SizedBox(height: 16),
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -149,9 +187,11 @@ class ToolsScreen extends StatelessWidget {
                   ),
                 ),
               ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
