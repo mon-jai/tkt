@@ -9,8 +9,7 @@ import 'package:tkt/services/score_service.dart';
 import 'package:tkt/services/demo_service.dart';
 import 'package:tkt/providers/demo_mode_provider.dart';
 import 'package:tkt/pages/webview_screen.dart';
-import 'package:tkt/tasks/ntust_login_task.dart';
-import 'package:tkt/connector/ntust_connector.dart';
+
 import 'package:tkt/connector/check_login.dart';
 import 'package:tkt/widgets/ntust_login_prompt_dialog.dart';
 import 'package:tkt/debug/log/log.dart';
@@ -83,9 +82,17 @@ class _ScorePageState extends State<ScorePage> {
       print('載入快取成績時發生錯誤：$e');
     }
     
-    // 如果沒有快取資料，則嘗試獲取新資料
+    // 如果沒有快取資料，則嘗試獲取新資料（演示模式下跳過）
     if (_rankingData.isEmpty) {
-      _fetchScores();
+      final prefs = await SharedPreferences.getInstance();
+      final isDemoMode = prefs.getBool('demo_mode') ?? false;
+      
+      if (!isDemoMode) {
+        _fetchScores();
+      } else {
+        // 演示模式下如果沒有資料，重新載入演示資料
+        _loadDemoScores();
+      }
     }
   }
 
@@ -98,13 +105,13 @@ class _ScorePageState extends State<ScorePage> {
       // 將演示排名資料轉換為 RankingData 物件
       final demoRankingList = DemoService.getDemoRankingData();
       _rankingData = demoRankingList.map((data) => RankingData(
-        semester: data['semester'],
-        classRank: data['classRank'],
-        departmentRank: data['departmentRank'],
-        averageScore: data['averageScore'],
-        classRankHistory: data['classRankHistory'],
-        departmentRankHistory: data['departmentRankHistory'],
-        averageScoreHistory: data['averageScoreHistory'],
+        semester: data['semester'] as String,
+        classRank: data['classRank'] as int,
+        departmentRank: data['departmentRank'] as int,
+        averageScore: (data['averageScore'] as num).toDouble(),
+        classRankHistory: data['classRankHistory'] as int,
+        departmentRankHistory: data['departmentRankHistory'] as int,
+        averageScoreHistory: (data['averageScoreHistory'] as num).toDouble(),
       )).toList();
       
       _lastUpdateTime = DateTime.now();
@@ -150,6 +157,16 @@ class _ScorePageState extends State<ScorePage> {
   /// 檢查登入狀態並獲取成績
   Future<void> _fetchScores() async {
     if (!mounted) return;
+    
+    // 檢查是否為演示模式
+    final prefs = await SharedPreferences.getInstance();
+    final isDemoMode = prefs.getBool('demo_mode') ?? false;
+    
+    if (isDemoMode) {
+      // 演示模式：直接載入演示資料
+      _loadDemoScores();
+      return;
+    }
     
     setState(() {
       _isLoading = true;

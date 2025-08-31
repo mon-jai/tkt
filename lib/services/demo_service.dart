@@ -348,30 +348,30 @@ class DemoService {
     return [
       {
         'semester': '112-1',
-        'classRank': '8/45',
-        'departmentRank': '15/180',
-        'averageScore': '90.2',
-        'classRankHistory': '優良',
-        'departmentRankHistory': '前20%',
-        'averageScoreHistory': '持續進步',
+        'classRank': 8,
+        'departmentRank': 15,
+        'averageScore': 90.2,
+        'classRankHistory': 1, // 進步趨勢：1=進步, 0=持平, -1=退步
+        'departmentRankHistory': 1,
+        'averageScoreHistory': 1.5, // 分數變化
       },
       {
         'semester': '111-2',
-        'classRank': '10/45',
-        'departmentRank': '18/180',
-        'averageScore': '89.5',
-        'classRankHistory': '優良',
-        'departmentRankHistory': '前20%',
-        'averageScoreHistory': '穩定表現',
+        'classRank': 10,
+        'departmentRank': 18,
+        'averageScore': 89.5,
+        'classRankHistory': 0, // 持平
+        'departmentRankHistory': 0,
+        'averageScoreHistory': 0.7,
       },
       {
         'semester': '111-1',
-        'classRank': '12/45',
-        'departmentRank': '22/180',
-        'averageScore': '88.8',
-        'classRankHistory': '良好',
-        'departmentRankHistory': '前25%',
-        'averageScoreHistory': '初期適應',
+        'classRank': 12,
+        'departmentRank': 22,
+        'averageScore': 88.8,
+        'classRankHistory': 0, // 首學期，無比較基準
+        'departmentRankHistory': 0,
+        'averageScoreHistory': 0.0,
       },
     ];
   }
