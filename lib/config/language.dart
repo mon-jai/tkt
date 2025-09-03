@@ -37,8 +37,7 @@ class AppLanguage {
       'profile': '個人資料',
       'notifications': '通知設定',
       'about': '關於',
-      'login_test': '登入測試',
-      'login_test_description': '測試台科大登入功能',
+  // 'login_test' and its description removed
       // 添加更多翻譯...
     },
     'en_US': {
@@ -57,8 +56,7 @@ class AppLanguage {
       'profile': 'Profile',
       'notifications': 'Notifications',
       'about': 'About',
-      'login_test': 'Login Test',
-      'login_test_description': 'Test NTUST Login Function',
+  // 'login_test' and its description removed
       // 添加更多翻譯...
     },
   };

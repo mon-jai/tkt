@@ -58,7 +58,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 16),
             _buildCoursePreview(context),
             const SizedBox(height: 16),
-            _buildEventPreview(context),
           ],
         ),
       ),
@@ -165,14 +164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         },
       ),
-      _QuickAction(
-        icon: Icons.directions_bus,
-        label: '交通資訊',
-        color: Colors.teal,
-        onTap: () {
-          // TODO: 實現交通資訊功能
-        },
-      ),
+  // 交通資訊已移除
     ];
 
     return Card(
@@ -390,42 +382,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }).toList(),
                 );
               },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEventPreview(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '近期活動',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                TextButton(
-                  onPressed: () {
-                    // TODO: 導航到活動頁面
-                  },
-                  child: const Text('查看更多'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // TODO: 實現活動預覽
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('目前沒有活動'),
-              ),
             ),
           ],
         ),

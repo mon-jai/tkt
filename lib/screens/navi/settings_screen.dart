@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tkt/pages/ntust_test_page.dart';
+// ...existing imports...
 import 'package:tkt/screens/account_storage_page.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/demo_mode_provider.dart';
@@ -86,21 +86,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const Divider(),
-              ListTile(
-                leading: const Icon(Icons.bug_report),
-                title: const Text('登入測試'),
-                subtitle: const Text('測試台科大校園系統登入功能'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NtustConnectorTestPage(),
-                    ),
-                  );
-                },
-              ),
-              const Divider(),
+              // 登入測試項目已移除
               ListTile(
                 leading: const Icon(Icons.fingerprint),
                 title: const Text('校園系統帳號'),

@@ -9,15 +9,23 @@ class CampusMapScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('校園地圖'),
       ),
-      body: InteractiveViewer(
-        maxScale: 6.0,
-        minScale: 0.8,
-        child: Center(
-          child: Image.asset(
-            'assets/images/map.jpg',
-            fit: BoxFit.contain,
-          ),
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+          final targetWidth = (constraints.maxWidth * devicePixelRatio).round();
+          final imageProvider = ResizeImage(const AssetImage('assets/images/map.jpg'), width: targetWidth);
+
+          return InteractiveViewer(
+            maxScale: 6.0,
+            minScale: 0.8,
+            child: Center(
+              child: Image(
+                image: imageProvider,
+                fit: BoxFit.contain,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
