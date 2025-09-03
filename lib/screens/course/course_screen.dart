@@ -10,7 +10,6 @@ import 'package:tkt/services/schedule_service.dart';
 import 'package:tkt/utils/course_time_util.dart';
 import 'package:tkt/widgets/ntust_login_prompt_dialog.dart';
 import 'package:tkt/providers/demo_mode_provider.dart';
-import 'package:tkt/services/demo_service.dart';
 
 
 class CourseScheduleScreen extends StatefulWidget {
@@ -490,38 +489,42 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final today = DateTime.now().weekday - 1; // 0-6 for TabBar index
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('我的課表'),
-        elevation: 1.0,
+        title: Text(
+          '我的課表',
+          style: TextStyle(
+            fontWeight: FontWeight.w400,
+            letterSpacing: 1.0,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
+        elevation: 0,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: _isGridView
-              ? const SizedBox.shrink()
-              : Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: theme.dividerColor.withOpacity(0.5),
-                        width: 1,
-                      ),
-                    ),
-                  ),
+          preferredSize: Size.fromHeight(_isGridView ? 1 : kToolbarHeight + 1),
+          child: Column(
+            children: [
+              if (!_isGridView)
+                Container(
+                  color: colorScheme.surface,
                   child: TabBar(
                     controller: _tabController,
                     isScrollable: true,
                     dividerColor: Colors.transparent,
                     tabAlignment: TabAlignment.center,
-                    labelColor: theme.colorScheme.primary,
-                    unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                    labelColor: colorScheme.primary,
+                    unselectedLabelColor: colorScheme.onSurfaceVariant,
                     indicatorSize: TabBarIndicatorSize.label,
                     indicatorPadding: const EdgeInsets.symmetric(horizontal: 8.0),
                     indicator: UnderlineTabIndicator(
                       borderSide: BorderSide(
-                        color: theme.colorScheme.primary,
+                        color: colorScheme.primary,
                         width: 3,
                       ),
                       insets: const EdgeInsets.only(bottom: 0),
@@ -542,26 +545,29 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
                                 ),
                                 decoration: BoxDecoration(
                                   color: index == today
-                                      ? theme.colorScheme.primaryContainer.withOpacity(0.7)
+                                      ? colorScheme.primary.withOpacity(0.1)
                                       : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Column(
                                   children: [
                                     Text(
                                       _weekdays[index],
-                                      style: theme.textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: index == today ? theme.colorScheme.onPrimaryContainer : null,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: index == today 
+                                          ? colorScheme.primary 
+                                          : colorScheme.onSurfaceVariant,
+                                        fontSize: 14,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       index == today ? '今天' : _weekdayNames[index],
-                                      style: theme.textTheme.bodySmall?.copyWith(
+                                      style: TextStyle(
                                         color: index == today
-                                            ? theme.colorScheme.onPrimaryContainer.withOpacity(0.8)
-                                            : theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                                            ? colorScheme.primary.withOpacity(0.7)
+                                            : colorScheme.onSurfaceVariant.withOpacity(0.7),
                                         fontSize: 10,
                                       ),
                                     ),
@@ -575,61 +581,96 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
                     ),
                   ),
                 ),
+              Container(
+                height: 1,
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
+            ],
+          ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(_isGridView ? Icons.view_agenda : Icons.grid_view),
-            tooltip: _isGridView ? '切換為分日檢視' : '切換為網格檢視',
-            onPressed: () {
-              setState(() {
-                _isGridView = !_isGridView;
-              });
-              _saveViewMode(_isGridView);
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _isGridView ? Icons.view_agenda_rounded : Icons.grid_view_rounded,
+                  size: 20,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              tooltip: _isGridView ? '切換為分日檢視' : '切換為網格檢視',
+              onPressed: () {
+                setState(() {
+                  _isGridView = !_isGridView;
+                });
+                _saveViewMode(_isGridView);
+              },
+            ),
           ),
-          Consumer<DemoModeProvider>(
-            builder: (context, demoModeProvider, child) {
-              return PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'add':
-                      _showAddCourseDialog(context);
-                      break;
-                    case 'import':
-                      _importCourses(context);
-                      break;
-                    case 'demo_import':
-                      _importDemoCourses(context);
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'add',
-                    child: ListTile(
-                      leading: Icon(Icons.add),
-                      title: Text('新增課程'),
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            child: Consumer<DemoModeProvider>(
+              builder: (context, demoModeProvider, child) {
+                return PopupMenuButton<String>(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceVariant,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.more_vert_rounded,
+                      size: 20,
+                      color: colorScheme.onSurface,
                     ),
                   ),
-                  if (!demoModeProvider.isDemoModeEnabled)
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'add':
+                        _showAddCourseDialog(context);
+                        break;
+                      case 'import':
+                        _importCourses(context);
+                        break;
+                      case 'demo_import':
+                        _importDemoCourses(context);
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
                     const PopupMenuItem(
-                      value: 'import',
+                      value: 'add',
                       child: ListTile(
-                        leading: Icon(Icons.school),
-                        title: Text('匯入台科大課表'),
+                        leading: Icon(Icons.add),
+                        title: Text('新增課程'),
                       ),
                     ),
-                  if (demoModeProvider.isDemoModeEnabled)
-                    const PopupMenuItem(
-                      value: 'demo_import',
-                      child: ListTile(
-                        leading: Icon(Icons.preview),
-                        title: Text('匯入演示課表'),
+                    if (!demoModeProvider.isDemoModeEnabled)
+                      const PopupMenuItem(
+                        value: 'import',
+                        child: ListTile(
+                          leading: Icon(Icons.school),
+                          title: Text('匯入台科大課表'),
+                        ),
                       ),
-                    ),
-                ],
-              );
-            },
+                    if (demoModeProvider.isDemoModeEnabled)
+                      const PopupMenuItem(
+                        value: 'demo_import',
+                        child: ListTile(
+                          leading: Icon(Icons.preview),
+                          title: Text('匯入演示課表'),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),

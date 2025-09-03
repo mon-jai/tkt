@@ -2,108 +2,212 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
+  // 包豪斯風格的配色方案 - 稍微柔和版本
+  static const Color bauhausBlack = Color(0xFF2D2D2D); // 稍微柔和的黑色
+  static const Color bauhausWhite = Color(0xFFFFFFFF);
+  static const Color bauhausGrey = Color(0xFF6B6B6B); // 更溫暖的灰色
+  static const Color bauhausLightGrey = Color(0xFFF8F8F8); // 更溫暖的淺灰
+  static const Color bauhausRed = Color(0xFFE53E3E);
+  static const Color bauhausBlue = Color(0xFF3182CE);
+  static const Color bauhausYellow = Color(0xFFD69E2E);
+  static const Color bauhausBorder = Color(0xFFE5E5E5); // 柔和的邊框色
+
   static ThemeData buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
-    final primaryBlue = isDark ? Colors.blue.shade200 : Colors.blue;
-    final accentBlue = isDark ? Colors.blue.shade300 : const Color(0xFF42A5F5);
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final backgroundColor = isDark ? const Color(0xFF121212) : Colors.white;
-    final surfaceColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE3F2FD);
-    final secondaryTextColor = isDark ? Colors.white70 : Colors.black54;
+    
+    // 包豪斯風格強調對比，不管深色淺色都使用強烈對比
+    final primaryColor = isDark ? bauhausWhite : bauhausBlack;
+    final backgroundColor = isDark ? bauhausBlack : bauhausWhite;
+    final surfaceColor = isDark ? Color(0xFF1A1A1A) : bauhausWhite;
+    final textColor = isDark ? bauhausWhite : bauhausBlack;
+    final secondaryTextColor = isDark ? Color(0xFFB0B0B0) : bauhausGrey;
+    final borderColor = isDark ? Color(0xFF404040) : bauhausBorder;
 
-    final textTheme = GoogleFonts.latoTextTheme().copyWith(
-      bodyLarge: TextStyle(color: textColor),
-      bodyMedium: TextStyle(color: textColor.withOpacity(0.87)),
-      bodySmall: TextStyle(color: secondaryTextColor),
-      titleLarge: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold),
-      titleMedium: TextStyle(color: primaryBlue, fontSize: 18, fontWeight: FontWeight.w600),
-      labelSmall: TextStyle(color: secondaryTextColor),
-      titleSmall: TextStyle(color: secondaryTextColor),
+    // 使用更現代、簡潔的字體
+    final textTheme = GoogleFonts.robotoTextTheme().copyWith(
+      // 標題使用更輕的字重
+      headlineLarge: TextStyle(
+        color: textColor, 
+        fontSize: 28, 
+        fontWeight: FontWeight.w300,
+        letterSpacing: 1.5,
+      ),
+      headlineMedium: TextStyle(
+        color: textColor, 
+        fontSize: 24, 
+        fontWeight: FontWeight.w300,
+        letterSpacing: 1.2,
+      ),
+      headlineSmall: TextStyle(
+        color: textColor, 
+        fontSize: 20, 
+        fontWeight: FontWeight.w300,
+        letterSpacing: 1.0,
+      ),
+      titleLarge: TextStyle(
+        color: textColor, 
+        fontSize: 18, 
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.5,
+      ),
+      titleMedium: TextStyle(
+        color: textColor, 
+        fontSize: 16, 
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.5,
+      ),
+      titleSmall: TextStyle(
+        color: secondaryTextColor, 
+        fontSize: 14, 
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.3,
+      ),
+      bodyLarge: TextStyle(
+        color: textColor, 
+        fontSize: 16, 
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.3,
+      ),
+      bodyMedium: TextStyle(
+        color: textColor, 
+        fontSize: 14, 
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.2,
+      ),
+      bodySmall: TextStyle(
+        color: secondaryTextColor, 
+        fontSize: 12, 
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.2,
+      ),
+      labelLarge: TextStyle(
+        color: textColor, 
+        fontSize: 14, 
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.8,
+      ),
+      labelMedium: TextStyle(
+        color: textColor, 
+        fontSize: 12, 
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.8,
+      ),
+      labelSmall: TextStyle(
+        color: secondaryTextColor, 
+        fontSize: 10, 
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.8,
+      ),
     );
 
     return ThemeData(
       brightness: brightness,
-      primarySwatch: Colors.blue,
-      scaffoldBackgroundColor: backgroundColor,
+      scaffoldBackgroundColor: isDark ? bauhausBlack : bauhausLightGrey,
       textTheme: textTheme,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryBlue,
+      colorScheme: ColorScheme(
         brightness: brightness,
-        primary: primaryBlue,
-        secondary: accentBlue,
-        surface: surfaceColor,
+        primary: primaryColor,
+        onPrimary: backgroundColor,
+        secondary: bauhausGrey,
+        onSecondary: bauhausWhite,
+        error: bauhausRed,
+        onError: bauhausWhite,
         background: backgroundColor,
         onBackground: textColor,
+        surface: surfaceColor,
         onSurface: textColor,
-        onSecondary: secondaryTextColor,
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: isDark ? surfaceColor : Colors.white,
-        selectedItemColor: isDark ? Colors.white : primaryBlue,
-        unselectedItemColor: secondaryTextColor,
-        selectedIconTheme: isDark ? IconThemeData(
-          color: const Color.fromARGB(255, 100, 139, 229),
-          size: 24,
-        ) : IconThemeData(
-          color: primaryBlue,
-          size: 24,
+      // AppBar 包豪斯風格
+      appBarTheme: AppBarTheme(
+        backgroundColor: backgroundColor,
+        foregroundColor: textColor,
+        elevation: 0,
+        titleTextStyle: textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w300,
+          letterSpacing: 2.0,
         ),
-        unselectedIconTheme: IconThemeData(
-          color: secondaryTextColor,
-          size: 24,
+      ),
+      // 卡片風格 - 輕微圓角，柔和邊框
+      cardTheme: CardThemeData(
+        color: surfaceColor,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8), // 輕微圓角
+          side: BorderSide(color: borderColor, width: 1),
         ),
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-        elevation: isDark ? 0 : 8,
       ),
-      listTileTheme: ListTileThemeData(
-        selectedTileColor: isDark ? Colors.white.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
-        selectedColor: isDark ? Colors.white : Colors.blue,
-        iconColor: isDark ? Colors.white70 : Colors.blue,
-        textColor: textColor,
-        subtitleTextStyle: TextStyle(color: secondaryTextColor),
-        tileColor: Colors.transparent,
-      ),
+      // 按鈕風格 - 柔和圓角
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryBlue,
-          foregroundColor: isDark ? Colors.black : Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          backgroundColor: backgroundColor,
+          foregroundColor: textColor,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28.0),
+            borderRadius: BorderRadius.circular(6), // 輕微圓角
+            side: BorderSide(color: primaryColor, width: 1),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          textStyle: textTheme.labelLarge,
         ),
       ),
+      // 文字按鈕風格
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: textColor,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          textStyle: textTheme.labelMedium,
+        ),
+      ),
+      // 底部導航
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: surfaceColor,
+        selectedItemColor: textColor,
+        unselectedItemColor: secondaryTextColor,
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+      ),
+      // 列表項目
+      listTileTheme: ListTileThemeData(
+        selectedTileColor: Colors.transparent,
+        selectedColor: textColor,
+        iconColor: textColor,
+        textColor: textColor,
+        subtitleTextStyle: textTheme.bodySmall,
+        tileColor: Colors.transparent,
+      ),
+      // 輸入框 - 柔和圓角
       inputDecorationTheme: InputDecorationTheme(
-        filled: isDark,
-        fillColor: isDark ? surfaceColor : null,
+        filled: false,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), // 輕微圓角
+          borderSide: BorderSide(color: borderColor, width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: borderColor, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: textColor, width: 2),
+        ),
         hintStyle: TextStyle(color: secondaryTextColor),
-        enabledBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: textColor.withOpacity(0.2)),
-        ),
-        focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: primaryBlue, width: 2.0),
-        ),
       ),
+      // 開關
       switchTheme: SwitchThemeData(
         thumbColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return primaryBlue;
+            return textColor;
           }
-          return null;
+          return secondaryTextColor;
         }),
         trackColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return primaryBlue.withOpacity(0.5);
+            return textColor.withOpacity(0.3);
           }
-          return null;
+          return secondaryTextColor.withOpacity(0.3);
         }),
-      ),
-      appBarTheme: AppBarTheme(
-        backgroundColor: isDark ? surfaceColor : primaryBlue,
-        foregroundColor: isDark ? textColor : Colors.white,
-        elevation: isDark ? 0 : 2,
       ),
     );
   }
