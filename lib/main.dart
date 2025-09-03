@@ -108,14 +108,71 @@ class _MyAppState extends State<MyApp> {
             future: Future.delayed(const Duration(seconds: 2)), // 初始化載入時間
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
+                final theme = Theme.of(context);
+                final colorScheme = theme.colorScheme;
+                
+                return Scaffold(
+                  backgroundColor: colorScheme.background,
                   body: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('系統初始化中...'),
+                        // Logo容器，使用ClipRRect解決黑邊問題
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: Container(
+                              color: Colors.white,
+                              child: Image.asset(
+                                'assets/images/icon.png',
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        // Loading indicator
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        // 載入文字
+                        Text(
+                          '系統初始化中...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: colorScheme.onSurfaceVariant,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // 副標題
+                        Text(
+                          'TKT 台科大校園助手',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
                       ],
                     ),
                   ),
