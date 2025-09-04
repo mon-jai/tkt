@@ -68,21 +68,35 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
 
   Future<void> _importCourses(BuildContext context) async {
     if (!context.mounted) return;
-    final loginStatus = await CheckLogin.course_login();
+    var loginStatus = await CheckLogin.course_login();
     Log.d('Login Status: ${loginStatus.toString()}');
 
     if (loginStatus == CourseConnectorStatus.loginFail) {
       if (!context.mounted) return;
       final shouldProceedToLogin = await _showLoginPromptDialog(context);
       if (shouldProceedToLogin == true) {
-        // TODO: 在此處實現導航到台科大登入頁面的邏輯
-        // 例如: Navigator.push(context, MaterialPageRoute(builder: (context) => const NtustLoginScreen()));
+        // 使用者完成了登入流程，重新檢查登入狀態
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('請完成登入後，再試一次匯入課表。')),
+          const SnackBar(content: Text('已完成登入，正在重新檢查登入狀態...')),
         );
+
+        // 重新檢查一次登入狀態
+        loginStatus = await CheckLogin.course_login();
+        Log.d('Rechecked Login Status: ${loginStatus.toString()}');
+
+        if (loginStatus == CourseConnectorStatus.loginFail) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('登入後仍無法檢測到有效的課程系統 Session，請稍後再試或登出後重試。')),
+          );
+          return;
+        }
+        // 如果重新檢查成功，繼續匯入流程
+      } else {
+        // 使用者取消登入
+        return;
       }
-      return;
     } else if (loginStatus == CourseConnectorStatus.unknownError) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -183,7 +197,8 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
         }
       }
 
-      // 將處理後的課程添加到 CourseService (帶有時間衝突檢查)
+      // 將處理後的課程添加到 CourseService (先清空原有課程，再新增)
+      await courseService.clearAllCourses();
       for (final courseToAdd in processedCourses) {
         final conflicts = courseService.checkTimeConflicts(courseToAdd);
         if (conflicts.isEmpty) {

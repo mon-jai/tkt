@@ -213,4 +213,14 @@ class CourseService with ChangeNotifier {
     final upcomingCourses = getUpcomingCourses();
     return upcomingCourses.isNotEmpty ? upcomingCourses.first : null;
   }
-} 
+
+  /// 清空所有課程
+  Future<void> clearAllCourses() async {
+    // 清空所有課程並同步儲存、取消通知
+    _courses.clear();
+    debugPrint('已清除所有課程 (CourseService)');
+    await _saveCourses();
+    await NotificationService.cancelAllNotifications();
+    notifyListeners();
+  }
+}

@@ -346,6 +346,52 @@ class NtustAuthService with ChangeNotifier {
     return true;
   }
 
+  // Public: 從 WebView 的 CookieManager 重新讀取 Cookies，並嘗試恢復/更新本地的 session 狀態
+  Future<bool> reloadSessionFromWebView() async {
+    try {
+      final cookieManager = CookieManager.instance();
+      final WebUri uri = WebUri(_loginUrl);
+      List<Cookie> webCookies = await cookieManager.getCookies(url: uri);
+      if (webCookies.isEmpty) {
+        debugPrint('[reloadSessionFromWebView] 沒有從 WebView 取得 Cookies');
+        return false;
+      }
+
+      List<io.Cookie> extractedIoCookies = [];
+      for (var cookie in webCookies) {
+        io.Cookie ioCookie = io.Cookie(cookie.name, cookie.value ?? '')
+          ..domain = cookie.domain
+          ..path = cookie.path ?? '/'
+          ..secure = cookie.isSecure ?? false
+          ..httpOnly = cookie.isHttpOnly ?? false;
+        if (cookie.expiresDate != null) {
+          ioCookie.expires = DateTime.fromMillisecondsSinceEpoch(cookie.expiresDate!);
+        }
+        extractedIoCookies.add(ioCookie);
+      }
+
+      if (extractedIoCookies.isNotEmpty) {
+        _cookies = extractedIoCookies;
+        // 嘗試從 SharedPreferences 或現有欄位讀取 studentId
+        final prefs = await SharedPreferences.getInstance();
+        final storedId = prefs.getString('stored_student_id') ?? prefs.getString(_studentIdKey);
+        if (storedId != null && storedId.isNotEmpty) {
+          _studentId = storedId;
+        }
+        _isLoggedIn = true;
+        await _saveSession();
+        notifyListeners();
+        debugPrint('[reloadSessionFromWebView] 成功從 WebView 更新 Session，cookies=${_cookies?.length}');
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('[reloadSessionFromWebView] 發生錯誤: $e');
+      return false;
+    }
+  }
+
   // 銷毀時清理資源 (雖然 ChangeNotifier 通常由擁有它的 widget 管理生命週期)
   @override
   void dispose() {
