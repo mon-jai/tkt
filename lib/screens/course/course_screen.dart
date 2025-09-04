@@ -9,7 +9,6 @@ import 'package:tkt/services/course_service.dart';
 import 'package:tkt/services/schedule_service.dart';
 import 'package:tkt/utils/course_time_util.dart';
 import 'package:tkt/widgets/ntust_login_prompt_dialog.dart';
-import 'package:tkt/providers/demo_mode_provider.dart';
 
 
 class CourseScheduleScreen extends StatefulWidget {
@@ -205,76 +204,6 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
         SnackBar(content: Text('匯入失敗：$e')),
       );
       debugPrint('匯入課表時發生錯誤: $e'); // 打印更詳細的錯誤到控制台
-    }
-  }
-
-  /// 匯入演示課程
-  Future<void> _importDemoCourses(BuildContext context) async {
-    if (!context.mounted) return;
-    
-    try {
-      // 顯示確認對話框
-      final shouldImport = await showDialog<bool>(
-        context: context,
-        builder: (BuildContext dialogContext) {
-          return AlertDialog(
-            title: const Text('匯入演示課表'),
-            content: const Text('這將會清空目前的課表並匯入演示課程。\n\n演示課表包含：\n• 10門課程\n• 涵蓋週一至週五\n• 完整的課程資訊'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('取消'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('匯入'),
-              ),
-            ],
-          );
-        },
-      );
-      
-      if (shouldImport != true || !context.mounted) return;
-      
-      // 顯示載入指示器
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('正在匯入演示課表...'),
-            ],
-          ),
-        ),
-      );
-      
-      // 匯入演示課程
-      final courseService = context.read<CourseService>();
-      await courseService.importDemoCourses();
-      
-      // 關閉載入指示器
-      if (context.mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('演示課表匯入成功！'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      // 關閉可能還開著的載入指示器
-      if (context.mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('匯入演示課表失敗：$e')),
-        );
-      }
-      debugPrint('匯入演示課表時發生錯誤: $e');
     }
   }
 
@@ -615,61 +544,45 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
           ),
           Container(
             margin: const EdgeInsets.only(right: 16),
-            child: Consumer<DemoModeProvider>(
-              builder: (context, demoModeProvider, child) {
-                return PopupMenuButton<String>(
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceVariant,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.more_vert_rounded,
-                      size: 20,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'add':
-                        _showAddCourseDialog(context);
-                        break;
-                      case 'import':
-                        _importCourses(context);
-                        break;
-                      case 'demo_import':
-                        _importDemoCourses(context);
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'add',
-                      child: ListTile(
-                        leading: Icon(Icons.add),
-                        title: Text('新增課程'),
-                      ),
-                    ),
-                    if (!demoModeProvider.isDemoModeEnabled)
-                      const PopupMenuItem(
-                        value: 'import',
-                        child: ListTile(
-                          leading: Icon(Icons.school),
-                          title: Text('匯入台科大課表'),
-                        ),
-                      ),
-                    if (demoModeProvider.isDemoModeEnabled)
-                      const PopupMenuItem(
-                        value: 'demo_import',
-                        child: ListTile(
-                          leading: Icon(Icons.preview),
-                          title: Text('匯入演示課表'),
-                        ),
-                      ),
-                  ],
-                );
+            child: PopupMenuButton<String>(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.more_vert_rounded,
+                  size: 20,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              onSelected: (value) {
+                switch (value) {
+                  case 'add':
+                    _showAddCourseDialog(context);
+                    break;
+                  case 'import':
+                    _importCourses(context);
+                    break;
+                }
               },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'add',
+                  child: ListTile(
+                    leading: Icon(Icons.add),
+                    title: Text('新增課程'),
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'import',
+                  child: ListTile(
+                    leading: Icon(Icons.school),
+                    title: Text('匯入台科大課表'),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

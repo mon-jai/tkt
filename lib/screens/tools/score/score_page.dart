@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:tkt/models/score/course_score.dart';
 import 'package:tkt/models/score/credit_summary.dart';
 import 'package:tkt/models/score/ranking_data.dart';
 import 'package:tkt/services/score_service.dart';
-import 'package:tkt/services/demo_service.dart';
-import 'package:tkt/providers/demo_mode_provider.dart';
 import 'package:tkt/pages/webview_screen.dart';
 
 import 'package:tkt/connector/check_login.dart';
@@ -47,16 +44,7 @@ class _ScorePageState extends State<ScorePage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // 檢查是否為演示模式
-      final isDemoMode = prefs.getBool('demo_mode') ?? false;
-      
-      if (isDemoMode) {
-        // 演示模式：載入演示資料
-        _loadDemoScores();
-        return;
-      }
-      
-      // 正常模式：載入快取的資料
+      // 從本地載入快取資料
       final rankingJson = prefs.getStringList(_rankingDataKey);
       final coursesJson = prefs.getStringList(_courseScoresKey);
       final creditJson = prefs.getString(_creditSummaryKey);
@@ -82,51 +70,9 @@ class _ScorePageState extends State<ScorePage> {
       print('載入快取成績時發生錯誤：$e');
     }
     
-    // 如果沒有快取資料，則嘗試獲取新資料（演示模式下跳過）
+    // 如果沒有快取資料，則嘗試獲取新資料
     if (_rankingData.isEmpty) {
-      final prefs = await SharedPreferences.getInstance();
-      final isDemoMode = prefs.getBool('demo_mode') ?? false;
-      
-      if (!isDemoMode) {
-        _fetchScores();
-      } else {
-        // 演示模式下如果沒有資料，重新載入演示資料
-        _loadDemoScores();
-      }
-    }
-  }
-
-  /// 載入演示模式成績資料
-  void _loadDemoScores() {
-    try {
-      _courseScores = DemoService.getDemoCourseScores();
-      _creditSummary = DemoService.getDemoCreditSummary();
-      
-      // 將演示排名資料轉換為 RankingData 物件
-      final demoRankingList = DemoService.getDemoRankingData();
-      _rankingData = demoRankingList.map((data) => RankingData(
-        semester: data['semester'] as String,
-        classRank: data['classRank'] as int,
-        departmentRank: data['departmentRank'] as int,
-        averageScore: (data['averageScore'] as num).toDouble(),
-        classRankHistory: data['classRankHistory'] as int,
-        departmentRankHistory: data['departmentRankHistory'] as int,
-        averageScoreHistory: (data['averageScoreHistory'] as num).toDouble(),
-      )).toList();
-      
-      _lastUpdateTime = DateTime.now();
-      
-      setState(() {
-        _isLoading = false;
-      });
-
-      Log.d('演示模式：已載入演示成績資料');
-    } catch (e) {
-      Log.e('載入演示成績資料時發生錯誤：$e');
-      setState(() {
-        _isLoading = false;
-        _error = '載入演示資料失敗';
-      });
+      _fetchScores();
     }
   }
 
@@ -157,16 +103,6 @@ class _ScorePageState extends State<ScorePage> {
   /// 檢查登入狀態並獲取成績
   Future<void> _fetchScores() async {
     if (!mounted) return;
-    
-    // 檢查是否為演示模式
-    final prefs = await SharedPreferences.getInstance();
-    final isDemoMode = prefs.getBool('demo_mode') ?? false;
-    
-    if (isDemoMode) {
-      // 演示模式：直接載入演示資料
-      _loadDemoScores();
-      return;
-    }
     
     setState(() {
       _isLoading = true;
@@ -349,60 +285,27 @@ class _ScorePageState extends State<ScorePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DemoModeProvider>(
-      builder: (context, demoModeProvider, child) {
-        return Scaffold(
-          appBar: AppBar(
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text('成績查詢'),
-                    if (demoModeProvider.isDemoModeEnabled) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '演示',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSecondary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (_lastUpdateTime != null)
-                  Text(
-                    demoModeProvider.isDemoModeEnabled 
-                        ? '演示資料：${_formatDateTime(_lastUpdateTime!)}'
-                        : '更新：${_formatDateTime(_lastUpdateTime!)}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
-                  ),
-              ],
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: demoModeProvider.isDemoModeEnabled 
-                    ? () {
-                        _loadDemoScores();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('演示資料已重新載入'))
-                        );
-                      }
-                    : _fetchScores,
-                tooltip: demoModeProvider.isDemoModeEnabled ? '重新載入演示資料' : '重新整理成績',
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('成績查詢'),
+            if (_lastUpdateTime != null)
+              Text(
+                '更新：${_formatDateTime(_lastUpdateTime!)}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
               ),
-            ],
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchScores,
+            tooltip: '重新整理成績',
           ),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _showWebView
@@ -445,8 +348,6 @@ class _ScorePageState extends State<ScorePage> {
                         ],
                       ),
                     ),
-        );
-      },
     );
   }
 

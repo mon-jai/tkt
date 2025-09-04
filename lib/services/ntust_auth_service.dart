@@ -3,7 +3,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:html/parser.dart' as parser;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' as io; // 用於 io.Cookie
-import 'demo_service.dart';
 
 // 定義登入狀態枚舉 (類似 NTUSTConnector 中的)
 // enum NtustLoginStatus { success, fail, error } // 如果需要更細緻的狀態管理，可以啟用
@@ -16,13 +15,11 @@ class NtustAuthService with ChangeNotifier {
   bool _isLoggedIn = false;
   String? _studentId;
   List<io.Cookie>? _cookies; // 使用 dart:io 的 Cookie
-  bool _isDemoMode = false; // 演示模式狀態
 
   // Getters
   bool get isLoggedIn => _isLoggedIn;
   String? get studentId => _studentId;
   List<io.Cookie>? get sessionCookies => _cookies;
-  bool get isDemoMode => _isDemoMode;
 
 
   // SharedPreferences 的鍵名
@@ -42,17 +39,6 @@ class NtustAuthService with ChangeNotifier {
       final cookiesJsonString = prefs.getString(_cookiesKey); // 儲存為 JSON 字串
       _studentId = prefs.getString(_studentIdKey);
       final lastLoginTimeString = prefs.getString(_lastLoginTimeKey);
-
-      // 檢查是否為演示模式會話
-      final isDemoSession = prefs.getBool('demo_mode_session_ntust') ?? false;
-      
-      if (isDemoSession && _studentId != null) {
-        _isLoggedIn = true;
-        _isDemoMode = true;
-        debugPrint("NtustAuthService: 演示模式會話已恢復. Student ID: $_studentId");
-        notifyListeners();
-        return;
-      }
       
       if (cookiesJsonString != null && _studentId != null && lastLoginTimeString != null) {
         final lastLogin = DateTime.parse(lastLoginTimeString);
@@ -127,7 +113,6 @@ class NtustAuthService with ChangeNotifier {
       await prefs.remove(_cookiesKey);
       await prefs.remove(_studentIdKey);
       await prefs.remove(_lastLoginTimeKey);
-      await prefs.remove('demo_mode_session_ntust');
 
       final cookieManager = CookieManager.instance();
       await cookieManager.deleteAllCookies(); // 清除 WebView 中的 Cookies
@@ -135,7 +120,6 @@ class NtustAuthService with ChangeNotifier {
       _cookies = null;
       _studentId = null;
       _isLoggedIn = false;
-      _isDemoMode = false;
       if (notify) {
         notifyListeners();
       }
@@ -147,11 +131,6 @@ class NtustAuthService with ChangeNotifier {
 
   // 登入台科大校務系統
   Future<String> login(String studentId, String password) async {
-    // 檢查是否為演示模式帳號
-    if (DemoService.isDemoAccount(studentId)) {
-      debugPrint("NtustAuthService: 偵測到演示模式帳號，啟用演示模式登入");
-      return await _handleDemoLogin(studentId);
-    }
     bool pageLoaded = false; // 用於追蹤初始頁面是否載入完成
     HeadlessInAppWebView? headlessWebView; // 移到外部以便在 finally 中 dispose
 
@@ -182,7 +161,7 @@ class NtustAuthService with ChangeNotifier {
           currentLoadedUrl = url?.toString();
         },
         onConsoleMessage: (controller, consoleMessage) {
-          debugPrint('[WebView] Console: [${consoleMessage.messageLevel?.toString() ?? ''}] ${consoleMessage.message}');
+          debugPrint('[WebView] Console: [${consoleMessage.messageLevel.toString()}] ${consoleMessage.message}');
         },
         onLoadError: (controller, url, code, message) {
           debugPrint('[WebView] onLoadError: $url, Code: $code, Message: $message');
@@ -339,42 +318,6 @@ class NtustAuthService with ChangeNotifier {
         await headlessWebView.dispose();
         debugPrint('[LoginProcess] HeadlessWebView 已釋放。');
       }
-    }
-  }
-
-  /// 處理演示模式登入 - 不進行真實登入，直接設置狀態
-  Future<String> _handleDemoLogin(String studentId) async {
-    try {
-      // 模擬短暫的載入時間（比真實登入快很多）
-      await DemoService.simulateApiDelay(300);
-
-      // 直接設定演示模式狀態，不進行任何網路請求
-      _studentId = studentId;
-      _isLoggedIn = true;
-      _isDemoMode = true;
-      
-      // 儲存演示模式會話（僅本地狀態）
-      await _saveDemoSession(studentId);
-      
-      notifyListeners();
-      debugPrint("NtustAuthService: 演示模式已啟用，跳過真實登入流程");
-      return '演示模式已啟用 - 歡迎使用台科通展示功能';
-    } catch (e) {
-      debugPrint("NtustAuthService: 演示模式設定失敗: $e");
-      return '演示模式設定失敗: $e';
-    }
-  }
-
-  /// 儲存演示模式會話 - 僅儲存本地狀態，不涉及任何網路或Cookie
-  Future<void> _saveDemoSession(String studentId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_studentIdKey, studentId);
-      await prefs.setBool('demo_mode_session_ntust', true);
-      await prefs.setString('demo_mode_message', '演示模式：所有資料均為示例');
-      debugPrint("NtustAuthService: 演示模式本地狀態已儲存，無需Cookie或網路連接");
-    } catch (e) {
-      debugPrint("NtustAuthService: 儲存演示模式本地狀態時發生錯誤: $e");
     }
   }
 

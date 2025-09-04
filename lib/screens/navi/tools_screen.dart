@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:tkt/screens/tools/info_system/info_system.dart';
 import 'package:tkt/screens/tools/score/score_page.dart';
-import '../../providers/demo_mode_provider.dart';
-import '../../services/demo_service.dart';
 import '../tools/parking/parking_lot_screen.dart';
 
 class ToolsScreen extends StatelessWidget {
@@ -13,21 +10,31 @@ class ToolsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: Text(
-          '工具',
-          style: TextStyle(
-            fontWeight: FontWeight.w400,
-            letterSpacing: 1.0,
-            color: colorScheme.onSurface,
-          ),
-        ),
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            Icon(
+              Icons.build_rounded,
+              color: colorScheme.primary,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '工具',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(
@@ -36,108 +43,64 @@ class ToolsScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: Consumer<DemoModeProvider>(
-        builder: (context, demoModeProvider, child) {
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 演示模式指示器
-                if (demoModeProvider.isDemoModeEnabled) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue[200]!, width: 1),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.preview_rounded,
-                            color: Colors.blue[700],
-                            size: 20,
-                          ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 工具卡片
+            Expanded(
+              child: ListView(
+                children: [
+                  _buildToolCard(
+                    context,
+                    icon: Icons.computer_rounded,
+                    title: '資訊系統',
+                    subtitle: '校園資訊系統連接',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NTUSTInfoSystemPage(),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            DemoService.getDemoModeMessage(),
-                            style: TextStyle(
-                              color: Colors.blue[700],
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  _buildToolCard(
+                    context,
+                    icon: Icons.local_parking_rounded,
+                    title: '停車場查詢',
+                    subtitle: '校園停車場即時車位',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ParkingLotScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildToolCard(
+                    context,
+                    icon: Icons.grade_rounded,
+                    title: '成績查詢',
+                    subtitle: '學期成績與 GPA 查詢',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ScorePage(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
-                
-                // 工具卡片
-                Expanded(
-                  child: ListView(
-                    children: [
-                      _buildToolCard(
-                        context,
-                        icon: Icons.computer_rounded,
-                        title: '資訊系統',
-                        subtitle: '校園資訊系統連接',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NTUSTInfoSystemPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _buildToolCard(
-                        context,
-                        icon: Icons.motorcycle_rounded,
-                        title: '機車停車位查詢',
-                        subtitle: '查看校園內機車停車位的即時空位狀況',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ParkingLotScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _buildToolCard(
-                        context,
-                        icon: Icons.score_rounded,
-                        title: '成績查詢',
-                        subtitle: '查詢個人成績',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ScorePage(),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
@@ -192,7 +155,7 @@ class ToolsScreen extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: colorScheme.onSurface,
                       ),
@@ -203,17 +166,15 @@ class ToolsScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         color: colorScheme.onSurfaceVariant,
-                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
               Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                Icons.chevron_right_rounded,
+                color: colorScheme.onSurfaceVariant,
+                size: 24,
               ),
             ],
           ),
@@ -221,4 +182,4 @@ class ToolsScreen extends StatelessWidget {
       ),
     );
   }
-} 
+}

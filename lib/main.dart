@@ -10,7 +10,6 @@ import 'services/ntust_auth_service.dart';
 import 'services/notification_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/announcement_provider.dart';
-import 'providers/demo_mode_provider.dart';
 import 'providers/language_provider.dart';
 import 'config/theme.dart';
 import 'config/language.dart';
@@ -49,9 +48,6 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => LanguageProvider(storageService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => DemoModeProvider(storageService),
         ),
         ChangeNotifierProvider(create: (_) => AnnouncementProvider()),
         ChangeNotifierProvider(create: (_) => CourseService()),

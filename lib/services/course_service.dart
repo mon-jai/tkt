@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course_model.dart';
 import '../utils/course_time_util.dart';
 import 'notification_service.dart';
-import 'demo_service.dart';
 
 class CourseService with ChangeNotifier {
   static const String _coursesKey = 'courses';
@@ -20,21 +19,12 @@ class CourseService with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // 檢查是否為演示模式
-      final isDemoMode = prefs.getBool('demo_mode') ?? false;
-      
-      if (isDemoMode) {
-        // 演示模式：載入演示課程資料
-        _courses = DemoService.getDemoCourses();
-        debugPrint('演示模式：已載入 ${_courses.length} 門演示課程');
-      } else {
-        // 正常模式：從本地存儲載入
-        final coursesJson = prefs.getStringList(_coursesKey) ?? [];
-        _courses = coursesJson
-            .map((json) => Course.fromJson(jsonDecode(json)))
-            .toList();
-        debugPrint('已載入 ${_courses.length} 門課程');
-      }
+      // 從本地存儲載入
+      final coursesJson = prefs.getStringList(_coursesKey) ?? [];
+      _courses = coursesJson
+          .map((json) => Course.fromJson(jsonDecode(json)))
+          .toList();
+      debugPrint('已載入 ${_courses.length} 門課程');
       
       // 載入課程後安排通知
       await _scheduleNotifications();
@@ -170,24 +160,7 @@ class CourseService with ChangeNotifier {
     await NotificationService.scheduleNotificationsForCourses(_courses);
   }
 
-  /// 演示模式專用：匯入演示課程
-  Future<void> importDemoCourses() async {
-    try {
-      final demoCourses = DemoService.getDemoCourses();
-      _courses = demoCourses;
-      
-      // 在演示模式下也保存到本地，讓切換回正常模式時還能看到
-      await _saveCourses();
-      await _scheduleNotifications();
-      notifyListeners();
-      
-      debugPrint('演示模式：已匯入 ${demoCourses.length} 門演示課程');
-    } catch (e) {
-      debugPrint('匯入演示課程時發生錯誤: $e');
-    }
-  }
-
-  /// 重新載入課程（檢查演示模式狀態）
+  /// 重新載入課程
   Future<void> reload() async {
     await _loadCourses();
   }

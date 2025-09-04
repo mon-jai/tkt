@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tkt/screens/account_storage_page.dart';
 import '../../providers/theme_provider.dart';
-import '../../providers/demo_mode_provider.dart';
 import '../setting/about/about_screen.dart';
 import '../setting/notification/notification_screen.dart';
 
@@ -36,8 +35,8 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: Consumer2<ThemeProvider, DemoModeProvider>(
-        builder: (context, themeProvider, demoModeProvider, child) {
+      body: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
@@ -77,46 +76,6 @@ class SettingsScreen extends StatelessWidget {
                     onChanged: (bool value) {
                       themeProvider.toggleTheme();
                     },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              
-              // 開發者選項區塊
-              _buildSettingsSection(
-                context,
-                title: '開發者',
-                children: [
-                  _buildSwitchTile(
-                    context,
-                    icon: Icons.preview_outlined,
-                    iconColor: demoModeProvider.isDemoModeEnabled 
-                      ? Colors.blue[600] 
-                      : null,
-                    title: '演示模式',
-                    subtitle: demoModeProvider.isDemoModeEnabled 
-                      ? 'Apple審核用演示模式 (已啟用)' 
-                      : '提供演示數據供App Store審核使用',
-                    value: demoModeProvider.isDemoModeEnabled,
-                    onChanged: demoModeProvider.isLoading 
-                      ? null 
-                      : (bool value) async {
-                          await demoModeProvider.toggleDemoMode();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  value ? '演示模式已啟用' : '演示模式已停用',
-                                ),
-                                duration: const Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            );
-                          }
-                        },
                   ),
                 ],
               ),
