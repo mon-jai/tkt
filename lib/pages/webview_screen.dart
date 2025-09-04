@@ -430,6 +430,22 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
                               // 檢查登入結果
                               await _checkLoginResult();
+
+                              // 如果已經不在登入頁面，但 loading overlay 仍顯示，嘗試直接提取並保存 Cookies，
+                              // 若提取失敗也一律關閉 overlay，避免無限轉圈
+                              if (!isLoginPage) {
+                                try {
+                                  await extractAndSaveCookies();
+                                } catch (e) {
+                                  Log.e('在非登入頁嘗試提取 Cookies 時發生錯誤: $e');
+                                }
+
+                                if (mounted && _showLoadingDialog) {
+                                  setState(() {
+                                    _showLoadingDialog = false;
+                                  });
+                                }
+                              }
                             }
                           },
                           onProgressChanged: (InAppWebViewController controller,
