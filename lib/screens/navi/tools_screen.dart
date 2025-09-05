@@ -12,29 +12,20 @@ class ToolsScreen extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        title: Text(
+          '工具',
+          style: TextStyle(
+            fontWeight: FontWeight.w400,
+            letterSpacing: 1.0,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            Icon(
-              Icons.build_rounded,
-              color: colorScheme.primary,
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              '工具',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-          ],
-        ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(
