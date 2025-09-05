@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/calendar_service.dart';
+import '../services/ics_calendar_service.dart';
+import 'ics_calendar_view_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -16,6 +18,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     super.initState();
     // 在進入頁面時自動載入行事曆
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 載入行事曆列表
       context.read<CalendarService>().fetchCalendars();
     });
   }
@@ -77,9 +80,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
           const SizedBox(height: 16),
           ...[
             '選擇想要的學年度行事曆',
-            '點擊下載按鈕',
-            '檔案會自動下載到您的裝置',
-            '使用 Excel 或其他試算表軟體開啟'
+            '點擊「檢視」按鈕在應用程式內查看',
+            '或點擊「下載」按鈕下載 ICS 檔案',
+            '可匯入到其他行事曆應用程式使用'
           ].asMap().entries.map((entry) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -351,42 +354,94 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          icon: const Icon(
-                            Icons.download_rounded,
-                            size: 16,
-                          ),
-                          label: const Text('下載'),
-                          onPressed: () async {
-                            try {
-                              await _launchURL(calendar.url);
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('無法下載行事曆: $e'),
-                                    backgroundColor: Colors.red[600],
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                        Row(
+                          children: [
+                            // ICS 檢視按鈕
+                            ElevatedButton.icon(
+                              icon: const Icon(
+                                Icons.calendar_view_month_rounded,
+                                size: 16,
+                              ),
+                              label: const Text('檢視'),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChangeNotifierProvider(
+                                      create: (_) => IcsCalendarService(),
+                                      child: IcsCalendarViewScreen(
+                                        icsUrl: calendar.url, // 使用與下載相同的 URL
+                                        title: calendar.title,
+                                        autoLoad: false, // 改為 false，強制使用傳入的 URL
+                                        showListButton: true,
+                                        onShowList: () {
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ChangeNotifierProvider(
+                                                create: (_) => CalendarService(),
+                                                child: const CalendarScreen(),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ),
                                 );
-                              }
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colorScheme.primary,
-                            foregroundColor: colorScheme.onPrimary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: colorScheme.primaryContainer,
+                                foregroundColor: colorScheme.onPrimaryContainer,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                elevation: 0,
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              icon: const Icon(
+                                Icons.download_rounded,
+                                size: 16,
+                              ),
+                              label: const Text('下載'),
+                              onPressed: () async {
+                                try {
+                                  await _launchURL(calendar.url);
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('無法下載行事曆: $e'),
+                                        backgroundColor: Colors.red[600],
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: colorScheme.primary,
+                                foregroundColor: colorScheme.onPrimary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                elevation: 0,
+                              ),
                             ),
-                            elevation: 0,
-                          ),
+                          ],
                         ),
                       ],
                     ),

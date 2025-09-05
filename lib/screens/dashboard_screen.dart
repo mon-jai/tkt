@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tkt/screens/course/course_screen.dart';
 import '../providers/announcement_provider.dart';
 import '../services/course_service.dart';
+import '../services/calendar_service.dart';
 import 'announcement_screen.dart';
 import 'campus_map_screen.dart';
 import 'calendar_screen.dart';
@@ -192,7 +193,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const CalendarScreen()),
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => CalendarService(),
+                child: const CalendarScreen(),
+              ),
+            ),
           );
         },
       ),

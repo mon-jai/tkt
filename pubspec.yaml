@@ -82,6 +82,10 @@ dependencies:
   logger: ^2.5.0
   back_button_interceptor: ^7.0.0  # 添加返回按鈕攔截器
   share_plus: ^11.1.0
+  # Calendar parsing
+  table_calendar: ^3.1.2
+  icalendar_parser: ^2.1.0
+  dio: ^5.7.0  # 用於下載 ICS 檔案
 
 dev_dependencies:
   flutter_test:

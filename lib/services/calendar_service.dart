@@ -28,34 +28,31 @@ class CalendarService extends ChangeNotifier {
         final document = parser.parse(response.body);
         final calendarList = <Calendar>[];
 
-        // 尋找所有行事曆連結（不包含 ics 檔案）
+        // 尋找所有 ICS 檔案連結
         final links = document.querySelectorAll('a');
         for (var link in links) {
           final text = link.text;
-          if (text.contains('學年度行事曆') && !text.contains('ics檔案') && !text.contains('如何匯入')) {
+          // 尋找包含 "ics檔案" 的連結
+          if (text.contains('ics檔案')) {
             // 從連結文字中提取學年度和描述
             String title = text.trim();
-            String? description;
             
-            // 處理特殊情況（如110學年度的備註）
-            if (title.contains('(經本校')) {
-              final parts = title.split('(');
-              title = parts[0].trim();
-              description = '(${parts[1]}';
-            }
-
-            // 移除標題中的括號內容
+            // 移除 "(ics檔案)" 字樣並清理標題
+            title = title.replaceAll('(ics檔案)', '').trim();
             title = title.replaceAll(RegExp(r'\([^)]*\)'), '').trim();
-            // 移除 "ods版" 字樣
-            title = title.replaceAll('ods版', '').trim();
+            
+            // 如果標題不包含"學年度行事曆"，添加它
+            if (!title.contains('行事曆')) {
+              title = '${title}學年度行事曆';
+            }
 
             final url = link.attributes['href'];
             if (url != null) {
               calendarList.add(Calendar(
                 title: title,
                 url: url.startsWith('http') ? url : 'https://www.academic.ntust.edu.tw${url}',
-                type: 'xlsx',
-                description: description,
+                type: 'ics',
+                description: 'ICS 行事曆檔案',
               ));
             }
           }

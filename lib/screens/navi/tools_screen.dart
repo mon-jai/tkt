@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:tkt/screens/tools/info_system/info_system.dart';
 import 'package:tkt/screens/tools/score/score_page.dart';
 import '../tools/parking/parking_lot_screen.dart';
+import '../calendar_screen.dart';
+import '../../services/calendar_service.dart';
 
 class ToolsScreen extends StatelessWidget {
   const ToolsScreen({super.key});
@@ -68,6 +71,24 @@ class ToolsScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const ParkingLotScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildToolCard(
+                    context,
+                    icon: Icons.calendar_month_rounded,
+                    title: '行事曆',
+                    subtitle: '學期行事曆查看與下載',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChangeNotifierProvider(
+                            create: (_) => CalendarService(),
+                            child: const CalendarScreen(),
+                          ),
                         ),
                       );
                     },
