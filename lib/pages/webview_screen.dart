@@ -7,9 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // TODO: 修改 'tkt' 為您的專案名稱
 import 'package:tkt/connector/core/dio_connector.dart';
-import 'package:tkt/connector/ntust_connector.dart';
-import 'package:tkt/debug/log/log.dart'; // 主要為了 ntustLoginUrl 和 NTUSTLoginStatus
-import 'package:html/parser.dart';
+import 'package:tkt/debug/log/log.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String initialUrl;
@@ -45,6 +43,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool firstLoad = true;
   bool _cookiesExtractedAndSaved = false;
   bool _showLoadingDialog = false;
+  
+  // 新增：重試功能相關變數
+  int _loginAttempts = 0;
+  static const int _maxLoginAttempts = 10;
 
   @override
   void initState() {
@@ -130,7 +132,15 @@ class _WebViewScreenState extends State<WebViewScreen> {
   Future<void> _autoFillWithCredentials(
       String username, String password) async {
     try {
-      Log.d('開始自動填入帳號密碼');
+      // 檢查是否已達到最大嘗試次數
+      if (_loginAttempts >= _maxLoginAttempts) {
+        Log.d('已達到最大登入嘗試次數 ($_maxLoginAttempts 次)');
+        _showMaxAttemptsDialog();
+        return;
+      }
+      
+      _loginAttempts++;
+      Log.d('開始第 $_loginAttempts 次登入嘗試');
 
       // 檢查頁面類型並使用對應的元素選擇器
       String? html = await webView?.getHtml();
@@ -212,21 +222,35 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
-  /// 自動填入帳號密碼並點擊登入
-  Future<void> _autoFillCredentials() async {
-    if (widget.username == null || widget.password == null) {
-      // 如果沒有傳入帳號密碼，嘗試從儲存中讀取
-      final prefs = await SharedPreferences.getInstance();
-      final storedUsername = prefs.getString('stored_student_id');
-      final storedPassword = prefs.getString('stored_password');
-
-      if (storedUsername != null && storedPassword != null) {
-        await _autoFillWithCredentials(storedUsername, storedPassword);
-      }
-      return;
-    }
-
-    await _autoFillWithCredentials(widget.username!, widget.password!);
+  /// 顯示達到最大嘗試次數的對話框
+  void _showMaxAttemptsDialog() {
+    if (!mounted) return;
+    
+    setState(() {
+      _showLoadingDialog = false;
+    });
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('登入失敗'),
+          content: const Text(
+            '已達到最大登入嘗試次數 (10次)。\n\n請檢查：\n• 帳號密碼是否正確\n• 網路連線是否正常\n\n如需繼續嘗試，請重新開啟此頁面。'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // 關閉對話框
+                Navigator.of(context).pop(); // 關閉 WebView 頁面
+              },
+              child: const Text('確定'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// 檢查登入結果
@@ -239,9 +263,27 @@ class _WebViewScreenState extends State<WebViewScreen> {
       if (result.contains('validation-summary-errors') ||
           result.contains('error-message') ||
           result.contains('alert-danger')) {
-        // 登入失敗
-        Log.d('登入失敗');
-        widget.onLoginResult?.call(false);
+        // 登入失敗，檢查是否可以重試
+        Log.d('登入失敗，第 $_loginAttempts 次嘗試');
+        
+        if (_loginAttempts >= _maxLoginAttempts) {
+          _showMaxAttemptsDialog();
+        } else {
+          // 重新嘗試登入
+          await Future.delayed(const Duration(seconds: 1));
+          if (widget.username != null && widget.password != null) {
+            await _autoFillWithCredentials(widget.username!, widget.password!);
+          } else {
+            // 從儲存讀取並重試
+            final prefs = await SharedPreferences.getInstance();
+            final storedUsername = prefs.getString('stored_student_id');
+            final storedPassword = prefs.getString('stored_password');
+            
+            if (storedUsername != null && storedPassword != null) {
+              await _autoFillWithCredentials(storedUsername, storedPassword);
+            }
+          }
+        }
         return;
       }
 
@@ -276,10 +318,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     firstLoad = false;
     try {
       // 等待 cookieJar 初始化完成
-      if (cookieJar == null) {
-        Log.d('等待 Cookie jar 初始化...');
-        await _initializeCookieJar();
-      }
+      await _initializeCookieJar();
 
       // 獲取 WebView 當前的 cookies（用於檢查）
       var existCookies =
@@ -297,7 +336,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   /// 從 WebView 提取 Cookies 並保存到 DioConnector
   Future<void> extractAndSaveCookies() async {
-    if (_cookiesExtractedAndSaved || webView == null || cookieJar == null)
+    if (_cookiesExtractedAndSaved || webView == null)
       return;
 
     try {
@@ -331,6 +370,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
         Log.d('已保存新的 Cookies 到 DioConnector');
 
         _cookiesExtractedAndSaved = true;
+        // 登入成功，重置嘗試次數
+        _loginAttempts = 0;
+        
         if (mounted) {
           setState(() {
             _showLoadingDialog = false;
@@ -461,8 +503,22 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   if (_showLoadingDialog)
                     Container(
                       color: Colors.black54,
-                      child: const Center(
-                        child: CircularProgressIndicator(),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            if (_loginAttempts > 0)
+                              Text(
+                                '登入嘗試中... ($_loginAttempts/$_maxLoginAttempts)',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                 ],
@@ -503,6 +559,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
         splashRadius: 16,
         onPressed: () async {
           if (webView != null) {
+            // 重新載入時重置嘗試次數
+            _loginAttempts = 0;
             await webView?.reload();
           }
         },
