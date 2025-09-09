@@ -9,13 +9,29 @@ class CalendarEvent {
   final String? type;
 
   CalendarEvent({
-    required this.title,
+    required String title,
     required this.date,
     this.endDate,
-    this.description,
+    String? description,
     this.color,
     this.type,
-  });
+  }) : title = _cleanText(title),
+       description = description != null ? _cleanText(description) : null;
+
+  /// 清理文字中的多餘換行符號和空白字符
+  static String _cleanText(String text) {
+    return text
+        .replaceAll('\\n', ' ')   // 處理轉義的換行符 \n
+        .replaceAll('\\r', ' ')   // 處理轉義的回車符 \r
+        .replaceAll('\n', ' ')    // 處理實際的換行符
+        .replaceAll('\r', ' ')    // 處理實際的回車符
+        .replaceAll('\t', ' ')    // 處理製表符
+        .replaceAll('\\,', ',')   // 處理轉義的逗號 \,
+        .replaceAll('\\;', ';')   // 處理轉義的分號 \;
+        .replaceAll('\\:', ':')   // 處理轉義的冒號 \:
+        .replaceAll(RegExp(r'\s+'), ' ')  // 將多個連續空白字符替換為單個空格
+        .trim();  // 去除首尾空白
+  }
 
   /// 是否為多日事件
   bool get isMultiDay {
