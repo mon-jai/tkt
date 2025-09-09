@@ -5,7 +5,7 @@ class Course {
   final String name;        // 課程名稱
   final String teacher;     // 教師名稱
   final String classroom;   // 教室
-  final int dayOfWeek;       // 1-5，代表週一到週日
+  final int dayOfWeek;       // 1-6，代表週一到週六
   final int startSlot;       // 開始節次（1-14）
   final int endSlot;         // 結束節次（1-14）
   final String? note;        // 備註
@@ -59,8 +59,11 @@ class Course {
 
   // 輔助方法：獲取星期幾的中文名稱
   String get dayOfWeekString {
-    const days = ['一', '二', '三', '四', '五'];
-    return '週${days[dayOfWeek - 1]}';
+    const days = ['一', '二', '三', '四', '五', '六'];
+    if (dayOfWeek >= 1 && dayOfWeek <= 6) {
+      return '週${days[dayOfWeek - 1]}';
+    }
+    return '週${dayOfWeek}'; // fallback for unexpected values
   }
 
   // 輔助方法：獲取課程時間範圍

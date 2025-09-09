@@ -20,22 +20,22 @@ class CourseScheduleScreen extends StatefulWidget {
 
 class _CourseScheduleScreenState extends State<CourseScheduleScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _weekdays = ['一', '二', '三', '四', '五'];
-  final List<String> _weekdayNames = ['週一', '週二', '週三', '週四', '週五'];
+  final List<String> _weekdays = ['一', '二', '三', '四', '五', '六'];
+  final List<String> _weekdayNames = ['週一', '週二', '週三', '週四', '週五', '週六'];
   bool _isGridView = false;
 
   @override
   void initState() {
     super.initState();
-    // 計算初始索引，確保在週末時不會超出範圍
+    // 計算初始索引，確保在週日時不會超出範圍
     int currentWeekday = DateTime.now().weekday; // 1=週一, 7=週日
     int initialIndex = 0; // 預設為週一
     
-    if (currentWeekday >= 1 && currentWeekday <= 5) {
-      // 週一到週五
+    if (currentWeekday >= 1 && currentWeekday <= 6) {
+      // 週一到週六
       initialIndex = currentWeekday - 1;
     } else {
-      // 週六或週日，預設顯示週一
+      // 週日，預設顯示週一
       initialIndex = 0;
     }
     
@@ -251,7 +251,7 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
     String teacher = courseToEdit?.teacher ?? '';
     String classroom = courseToEdit?.classroom ?? '';
     int dayOfWeek = courseToEdit?.dayOfWeek ?? DateTime.now().weekday;
-    if (dayOfWeek > 5) dayOfWeek = 1; // 僅允許週一至週五
+    if (dayOfWeek > 6) dayOfWeek = 1; // 僅允許週一至週六
     int startSlot = courseToEdit?.startSlot ?? 1;
     int endSlot = courseToEdit?.endSlot ?? 1;
     String? note = courseToEdit?.note;
@@ -287,7 +287,7 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> with Single
                     decoration: const InputDecoration(labelText: '星期'),
                     value: dayOfWeek,
                     items: List.generate(
-                      5,
+                      6,
                       (index) => DropdownMenuItem(
                         value: index + 1,
                         child: Text('週${_weekdays[index]}'),
@@ -895,7 +895,7 @@ class _WeeklyGridView extends StatelessWidget {
 
   final Function(Course) onEditCourse;
 
-  static const List<String> _weekdays = ['一', '二', '三', '四', '五'];
+  static const List<String> _weekdays = ['一', '二', '三', '四', '五', '六'];
 
   static const List<Color> _colorPool = [
     Color(0xFFFFCDD2),
@@ -935,7 +935,7 @@ class _WeeklyGridView extends StatelessWidget {
       (_) => List.filled(_weekdays.length, null),
     );
     for (final course in courses) {
-      if (course.dayOfWeek >= 1 && course.dayOfWeek <= 5) {
+      if (course.dayOfWeek >= 1 && course.dayOfWeek <= 6) {
         for (int slot = course.startSlot; slot <= course.endSlot; slot++) {
           if (slot >= 1 && slot <= slotCount) {
             grid[slot - 1][course.dayOfWeek - 1] = course;
@@ -952,7 +952,7 @@ class _WeeklyGridView extends StatelessWidget {
           // 左側節次較窄，其餘平均分配，確保總寬不超出可視寬
           const horizontalPadding = 16.0;
           final availableWidth = constraints.maxWidth - horizontalPadding;
-          const leftWidth = 56.0;
+          const leftWidth = 28.0;
           final dayWidth = ((availableWidth - leftWidth) / _weekdays.length).floorToDouble();
           final totalTableWidth = leftWidth + dayWidth * _weekdays.length;
 
@@ -993,7 +993,7 @@ class _WeeklyGridView extends StatelessWidget {
                                   _weekdays[d],
                                   theme,
                                   minHeight: 40,
-                                  highlight: (todayWeekday >= 1 && todayWeekday <= 5) && (d + 1 == todayWeekday),
+                                  highlight: (todayWeekday >= 1 && todayWeekday <= 6) && (d + 1 == todayWeekday),
                                 ),
                             ],
                           ),
@@ -1044,6 +1044,7 @@ class _WeeklyGridView extends StatelessWidget {
       style: theme.textTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.w600,
         color: highlight ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+        fontSize: isTimeSlot ? 12.0 : null, // 節次欄位使用更小的字體
       ),
       textAlign: TextAlign.center,
       maxLines: 1,
@@ -1053,7 +1054,7 @@ class _WeeklyGridView extends StatelessWidget {
     return Container(
       constraints: BoxConstraints(minHeight: minHeight),
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: isTimeSlot ? 2 : 6, vertical: 6),
       color: isTimeSlot ? theme.colorScheme.surfaceVariant.withOpacity(0.15) : Colors.transparent,
       child: highlight
           ? Container(
