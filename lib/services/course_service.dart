@@ -1,12 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course_model.dart';
 import '../utils/course_time_util.dart';
 import 'notification_service.dart';
-import 'app_group_service.dart';
+import 'home_widget_service.dart';
 
 class CourseService with ChangeNotifier {
   static const String _coursesKey = 'courses';
@@ -19,8 +17,8 @@ class CourseService with ChangeNotifier {
   }
 
   Future<void> _initializeService() async {
-    // 初始化 App Group Service
-    await AppGroupService.instance.initialize();
+    // 初始化 HomeWidget Service
+    await HomeWidgetService.instance.initialize();
     // 載入課程
     await _loadCourses();
   }
@@ -55,33 +53,17 @@ class CourseService with ChangeNotifier {
       await prefs.setStringList(_coursesKey, coursesJson);
       debugPrint('已儲存 ${_courses.length} 門課程到本地存儲');
       
-      // 同時儲存到 App Group 供 Widget 使用
-      final appGroupSuccess = await AppGroupService.instance.saveCourses(_courses);
-      if (appGroupSuccess) {
-        debugPrint('✅ 已同步 ${_courses.length} 門課程到 App Group');
+      // 同時儲存到 HomeWidget 供 Widget 使用
+      final widgetSuccess = await HomeWidgetService.instance.saveCourses(_courses);
+      if (widgetSuccess) {
+        debugPrint('✅ 已同步 ${_courses.length} 門課程到 HomeWidget');
         
-        // 觸發 Widget 更新
-        await _triggerWidgetUpdate();
+        // Widget 更新由 HomeWidgetService 內部處理
       } else {
-        debugPrint('❌ App Group 同步失敗');
+        debugPrint('❌ HomeWidget 同步失敗');
       }
     } catch (e) {
       debugPrint('儲存課程時發生錯誤: $e');
-    }
-  }
-  
-  /// 觸發 Widget 更新
-  Future<void> _triggerWidgetUpdate() async {
-    try {
-      if (Platform.isIOS) {
-        // 嘗試觸發 Widget 刷新（iOS 15+ 支援）
-        final platform = MethodChannel('widget_update');
-        await platform.invokeMethod('reloadAllTimelines');
-        debugPrint('🔄 已觸發 Widget 更新');
-      }
-    } catch (e) {
-      // Widget 更新失敗是正常的，因為這個功能不是所有 iOS 版本都支援
-      debugPrint('📱 Widget 更新觸發失敗（這是正常的）: $e');
     }
   }
 
