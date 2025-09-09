@@ -42,13 +42,13 @@ struct Provider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CourseEntry) -> ()) {
-        let courses = loadTodayCoursesFromHomeWidget()
+        let courses = loadTodayCourses()
         let entry = CourseEntry(date: Date(), courses: courses)
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
-        let courses = loadTodayCoursesFromHomeWidget()
+        let courses = loadTodayCourses()
         let currentDate = Date()
         
         // 每15分鐘更新一次
@@ -59,50 +59,24 @@ struct Provider: TimelineProvider {
         completion(timeline)
     }
     
-    /// 從 HomeWidget 載入今日課程（使用 home_widget 套件的資料格式）
-    private func loadTodayCoursesFromHomeWidget() -> [Course] {
+    private func loadTodayCourses() -> [Course] {
         guard let userDefaults = UserDefaults(suiteName: appGroupId) else {
-            print("❌ 無法獲取 UserDefaults for App Group: \(appGroupId)")
             return []
         }
         
-        // 首先嘗試載入預計算的今日課程
-        if let todayCoursesJson = userDefaults.string(forKey: "today_courses"),
-           !todayCoursesJson.isEmpty {
-            print("📋 從 HomeWidget 載入今日課程資料")
-            return parseCoursesFromJson(todayCoursesJson)
-        }
-        
-        // 如果沒有今日課程資料，則從所有課程中篩選
-        guard let coursesJson = userDefaults.string(forKey: "courses"),
-              !coursesJson.isEmpty else {
-            print("❌ 沒有找到課程資料")
+        guard let coursesData = userDefaults.stringArray(forKey: "courses") else {
             return []
         }
         
-        let allCourses = parseCoursesFromJson(coursesJson)
-        return filterTodayCourses(from: allCourses)
-    }
-    
-    /// 解析 JSON 字串為課程陣列
-    private func parseCoursesFromJson(_ jsonString: String) -> [Course] {
-        guard let data = jsonString.data(using: .utf8) else {
-            print("❌ 無法轉換 JSON 字串為 Data")
-            return []
+        var allCourses: [Course] = []
+        for courseJson in coursesData {
+            if let data = courseJson.data(using: .utf8),
+               let course = try? JSONDecoder().decode(Course.self, from: data) {
+                allCourses.append(course)
+            }
         }
         
-        do {
-            let courses = try JSONDecoder().decode([Course].self, from: data)
-            print("✅ 成功解析 \(courses.count) 門課程")
-            return courses
-        } catch {
-            print("❌ 解析課程 JSON 失敗: \(error)")
-            return []
-        }
-    }
-    
-    /// 從所有課程中篩選今日課程
-    private func filterTodayCourses(from courses: [Course]) -> [Course] {
+        // 篩選今日課程
         let today = Calendar.current.component(.weekday, from: Date())
         
         // Swift 的 weekday: 1=週日, 2=週一...7=週六
@@ -114,11 +88,10 @@ struct Provider: TimelineProvider {
             flutterWeekday = today - 1  // 週一=1, 週二=2...週六=6
         }
         
-        let todayCourses = courses.filter { course in
+        let todayCourses = allCourses.filter { course in
             course.dayOfWeek == flutterWeekday
         }.sorted { $0.startSlot < $1.startSlot }
         
-        print("📅 今日(\(flutterWeekday))課程數量: \(todayCourses.count)")
         return todayCourses
     }
 }

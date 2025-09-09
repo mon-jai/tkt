@@ -43,7 +43,6 @@ dependencies:
   # Local Storage
   shared_preferences: ^2.2.2 # 類似 Android 的 SharedPreferences
   shared_preferences_foundation: ^2.5.3 # App Group 共享數據支援
-  home_widget: ^0.6.0 # 跨平台 Widget 資料共享
 
   # Secure Storage (for JWT, etc.)
   flutter_secure_storage: ^9.0.0
