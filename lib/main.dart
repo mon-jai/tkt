@@ -13,6 +13,8 @@ import 'providers/announcement_provider.dart';
 import 'providers/language_provider.dart';
 import 'config/theme.dart';
 import 'config/language.dart';
+import 'services/alarm_permission_service.dart';
+import 'dart:io' show Platform;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +31,29 @@ void main() async {
   } catch (e) {
     print('請求通知權限時發生錯誤: $e');
   }
+
+  // 檢查 Exact Alarm 權限（Android 12+）
+  if (Platform.isAndroid) {
+    try {
+      final hasExactAlarmPermission = await AlarmPermissionService.checkExactAlarmPermission();
+      if (!hasExactAlarmPermission) {
+        // 開啟設置頁面並等待用戶返回
+        await AlarmPermissionService.openAlarmPermissionSettings();
+        // 等待一段時間讓用戶有機會設置權限
+        await Future.delayed(const Duration(seconds: 1));
+        // 再次檢查權限
+        final hasPermissionAfterSettings = await AlarmPermissionService.checkExactAlarmPermission();
+        if (!hasPermissionAfterSettings) {
+          print('用戶未授予 Exact Alarm 權限');
+        }
+      }
+    } catch (e) {
+      print('檢查 Exact Alarm 權限時發生錯誤: $e');
+    }
+  }
+  
+  // 確保 Flutter binding 已初始化
+  WidgetsFlutterBinding.ensureInitialized();
   
   final prefs = await SharedPreferences.getInstance();
   final storageService = StorageService(prefs);
