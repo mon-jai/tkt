@@ -12,11 +12,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          flutter-version: 'stable'
 
       - name: Get latest commit short hash
         run: echo "SHORT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
@@ -29,11 +28,11 @@ jobs:
           fi
 
       - name: Build APK
-        run: ./gradlew assembleRelease
+        run: flutter build apk --release
 
       - name: Find APK artifact
         run: |
-          APK_PATH=$(find . -type f -name "*.apk" | head -n 1)
+          APK_PATH=$(find build/app/outputs/flutter-apk -type f -name "*.apk" | head -n 1)
           if [ -z "$APK_PATH" ]; then
             echo "No APK found!"
             exit 1
