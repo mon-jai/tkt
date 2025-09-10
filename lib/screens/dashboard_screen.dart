@@ -251,14 +251,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 24),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 3,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.0,
-          children: actions.map((action) => _buildActionButton(context, action)).toList(),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // 動態調整格子尺寸以適應小螢幕
+            final screenWidth = constraints.maxWidth;
+            final crossAxisSpacing = screenWidth < 360 ? 12.0 : 16.0;
+            final mainAxisSpacing = screenWidth < 360 ? 12.0 : 16.0;
+            final childAspectRatio = screenWidth < 360 ? 0.9 : 1.0;
+            
+            return GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 3,
+              mainAxisSpacing: mainAxisSpacing,
+              crossAxisSpacing: crossAxisSpacing,
+              childAspectRatio: childAspectRatio,
+              children: actions.map((action) => _buildActionButton(context, action)).toList(),
+            );
+          },
         ),
       ],
     );
@@ -285,25 +295,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: action.onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(MediaQuery.of(context).size.width < 360 ? 16 : 20),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 action.icon,
-                size: 28,
+                size: MediaQuery.of(context).size.width < 360 ? 24 : 28,
                 color: action.color,
               ),
-              const SizedBox(height: 12),
-              Text(
-                action.label,
-                style: TextStyle(
-                  color: action.color,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                  letterSpacing: 0.3,
+              SizedBox(height: MediaQuery.of(context).size.width < 360 ? 8 : 12),
+              Flexible(
+                child: Text(
+                  action.label,
+                  style: TextStyle(
+                    color: action.color,
+                    fontWeight: FontWeight.w500,
+                    fontSize: MediaQuery.of(context).size.width < 360 ? 11 : 12,
+                    letterSpacing: 0.3,
+                    height: 1.2,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),

@@ -72,11 +72,8 @@ class _MyAppState extends State<MyApp> {
     // 在 app 啟動後嘗試預先快取校園地圖，減少使用者首次打開時的延遲
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        final mq = MediaQuery.of(context);
-        final devicePixelRatio = mq.devicePixelRatio;
-        final targetWidth = (mq.size.width * devicePixelRatio).round();
-        final resizedProvider = ResizeImage(const AssetImage('assets/images/map.jpg'), width: targetWidth);
-        await precacheImage(resizedProvider, context);
+        const imageProvider = AssetImage('assets/images/map.jpg');
+        await precacheImage(imageProvider, context);
       } catch (e) {
         // 忽略快取錯誤，避免影響啟動流程
         debugPrint('Precache map failed: $e');
