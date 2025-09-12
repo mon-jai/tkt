@@ -1,0 +1,64 @@
+name: Nightly Android APK Build
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs at 00:00 UTC every day
+  workflow_dispatch:
+  push:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Get latest commit short hash
+        run: echo "SHORT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Check if tag exists
+        run: |
+          if git rev-parse "refs/tags/$SHORT_HASH" >/dev/null 2>&1; then
+            echo "Tag exists. Exiting early."
+            exit 0
+          fi
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Find APK artifact
+        run: |
+          APK_PATH=$(find build/app/outputs/flutter-apk -type f -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "No APK found!"
+            exit 1
+          fi
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+
+      - name: Create tag
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "github-actions@github.com"
+          git tag $SHORT_HASH
+          git push origin $SHORT_HASH
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.SHORT_HASH }}
+          name: ${{ env.SHORT_HASH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APK_PATH }}
+          tag_name: ${{ env.SHORT_HASH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
